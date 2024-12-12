@@ -1,6 +1,5 @@
 use std::{sync::{atomic::{AtomicU64, Ordering::Relaxed}, mpsc::{channel, SendError, Sender}}, thread};
 
-
 trait RateLimiter: Send + Sync {
     fn did_exceed(&self) -> bool;
     fn count_up(&self);
@@ -8,9 +7,9 @@ trait RateLimiter: Send + Sync {
 }
 
 struct RateLimit<'a> {
-    uid: &'a str,
     max: u64,
     count: AtomicU64,
+    uid: &'a str,
     notifier: Sender<&'a str>
 }
 
@@ -29,14 +28,12 @@ impl RateLimiter for RateLimit<'_> {
     }
 }
 
-
-fn send_and_sync(safe: impl RateLimiter) {
+fn send_and_sync(safe: impl RateLimiter + 'static) {
     safe.notify().unwrap();
 }
 
 fn main() {
     let (sender, receiver) = channel::<&str>();
-
     let limit = RateLimit{
         uid: "1234",
         count: AtomicU64::new(0),
@@ -44,7 +41,7 @@ fn main() {
         notifier: sender.clone()
     };
 
-    thread::spawn(move || {
+    thread::spawn(move ||{
         send_and_sync(limit);
     });
 

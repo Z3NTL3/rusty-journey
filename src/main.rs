@@ -1,7 +1,7 @@
 use std::{rc::Rc, sync::atomic::{AtomicU64, Ordering::Relaxed}};
 
 
-trait RateLimiter {
+trait RateLimiter: Send + Sync {
     fn did_exceed(&self) -> bool;
     fn count_up(&self);
 }
@@ -22,7 +22,7 @@ impl RateLimiter for RateLimit<'_> {
     }
 }
 
-fn send_and_sync(safe: impl RateLimiter + Send + Sync + 'static) {}
+fn send_and_sync(safe: impl RateLimiter + 'static) {}
 
 fn main() {
     let limit = RateLimit{

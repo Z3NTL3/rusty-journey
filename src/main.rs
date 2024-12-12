@@ -1,13 +1,35 @@
-use learning_rust::{Man, EchoPerson};
+use std::{rc::Rc, sync::atomic::{AtomicU64, Ordering::Relaxed}};
 
-fn yolo() -> (u8, u8){
-    return (5, 5)
+
+trait RateLimiter {
+    fn did_exceed(&self) -> bool;
+    fn count_up(&self);
 }
 
-fn main() {
-    let efdal = Man{name: "Efdal Sancak"};
-    efdal.echo();
+struct RateLimit<'a> {
+    uid: &'a str,
+    count: AtomicU64,
+    max: u64
+}
 
-    let (num1, num2) = yolo();
-    println!("{num1}/{num2}=0")
+impl RateLimiter for RateLimit<'_> {
+    fn count_up(&self) {
+        self.count.fetch_add(1, Relaxed);
+    }
+
+    fn did_exceed(&self) -> bool {
+        self.count.load(Relaxed) > self.max
+    }
+}
+
+fn send_and_sync(safe: impl RateLimiter + Send + Sync + 'static) {}
+
+fn main() {
+    let limit = RateLimit{
+        uid: "",
+        count: AtomicU64::new(0),
+        max: 200
+    };
+
+    send_and_sync(limit);
 }

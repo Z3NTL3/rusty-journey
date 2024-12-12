@@ -1,4 +1,6 @@
 pub use human::{Female, Man, EchoPerson};
+pub use http_client::errors;
+
 pub mod human;
 pub mod http_client;
 

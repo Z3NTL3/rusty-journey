@@ -1,4 +1,4 @@
-pub use crate::http_client::errors::{HostError, AddrEmpty};
+pub use self::errors::{HostError, AddrEmpty};
 use std::{
     error::Error,  
     net::TcpStream, 
@@ -53,7 +53,6 @@ impl HttpClient {
 pub mod errors {
     use std::fmt::{self, *};
     use std::error::Error;
-    
 
     #[derive(Debug)]
     pub struct HostError;

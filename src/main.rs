@@ -1,49 +1,64 @@
-use std::{sync::{atomic::{AtomicU64, Ordering::Relaxed}, mpsc::{channel, SendError, Sender}}, thread};
+use std::{
+  sync::atomic::{AtomicU64, Ordering::SeqCst}, 
+  sync::Arc, 
+};
+use tokio::sync::mpsc::{
+    channel,
+    Sender,
+};
 
-trait RateLimiter: Send + Sync {
-    fn did_exceed(&self) -> bool;
-    fn count_up(&self);
-    fn notify(&self) -> Result<(), SendError<&str>>;
-}
+use tokio::time::{sleep, Duration};
 
-struct RateLimit<'a> {
-    max: u64,
+struct Counter {
     count: AtomicU64,
-    uid: &'a str,
-    notifier: Sender<&'a str>
+    max: u64,
+    limit_sig: Sender<String>
 }
 
-impl RateLimiter for RateLimit<'_> {
+impl Counter {
+    // must call limit_reached before counting up
     fn count_up(&self) {
-        self.count.fetch_add(1, Relaxed);
+        self.count.fetch_add(1, SeqCst);
     }
 
-    fn did_exceed(&self) -> bool {
-        self.count.load(Relaxed) > self.max
-    }
-
-    fn notify(&self) -> Result<(), SendError<&str>>{
-        self.notifier.send(self.uid)?;
-        Ok(())
+    async fn limit_reached(&self) -> bool {
+        // sleep(Duration::from_millis(1)).await; // just to give control back to the tokio runtime
+        // this async fn is useless i know
+        self.count.load(SeqCst) > self.max
     }
 }
 
-fn send_and_sync(safe: impl RateLimiter + 'static) {
-    safe.notify().unwrap();
-}
+#[tokio::main]
+async fn main() {
+    let (tx, mut rx) = channel::<String>(1);
 
-fn main() {
-    let (sender, receiver) = channel::<&str>();
-    let limit = RateLimit{
-        uid: "1234",
-        count: AtomicU64::new(0),
-        max: 200,
-        notifier: sender.clone()
-    };
+    let counter = Arc::new(
+        Counter{
+            count: AtomicU64::new(0),
+            max: 500,
+            limit_sig: tx
+        }
+    );
+    
+    // spawn taks
+    // the async runtime handles the rest simply said
+    for _ in 0..501 {
+        let c = counter.clone();
+        tokio::spawn( async move {            
+            if !c.limit_reached().await {
+                return c.count_up();
+            }
 
-    thread::spawn(move ||{
-        send_and_sync(limit);
-    });
+            // will be an error after closing but thats fine to ignore
+            let _ = c.limit_sig.send(String::from("limit reached")).await;
+        });
+    }
+    
+    while let Some(i) = rx.recv().await {
+        println!("got = {} - counter at: {}", i, counter.count.load(SeqCst));
 
-    println!("lets notify user[id: {}] about the rate limit!", receiver.recv().unwrap());
+        drop(rx);
+        break;
+    }
+    
 }

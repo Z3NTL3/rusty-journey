@@ -2,12 +2,14 @@ use std::{
     sync::atomic::{AtomicU64, Ordering::SeqCst}, 
     sync::Arc, 
 };
+use multithreaded_async::http_client::{self, HttpClient};
 use tokio::sync::mpsc::{
     channel,
     Sender,
 };
 
-use tokio::time::{sleep, Duration};
+use tokio::time::{sleep, Duration, timeout};
+use trust_dns_resolver::{config::{ResolverConfig, ResolverOpts}, Resolver};
 
 struct Counter {
     count: AtomicU64,
@@ -30,6 +32,21 @@ impl Counter {
 
 #[tokio::main]
 async fn main() {
+    let client = HttpClient::new();
+
+    let res = timeout(
+        Duration::from_nanos(1), 
+        client.http_get("44.196.3.45", "/headers", "httpbin.org")
+    ).await.unwrap();
+
+    match res {
+        Ok(res) => {
+            println!("{:?}", std::str::from_utf8(&res).unwrap())
+        },
+        Err(err) => println!("{}", err.to_string())
+    }
+
+    return;
     let (tx, mut rx) = channel::<String>(1);
 
     let counter = Arc::new(

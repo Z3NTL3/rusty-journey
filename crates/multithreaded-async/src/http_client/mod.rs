@@ -1,51 +1,50 @@
 pub use self::errors::{HostError, AddrEmpty};
 use std::{
     error::Error,  
-    net::TcpStream, 
     time::Duration
 };
-use url::Url;
-
-use trust_dns_resolver::Resolver;
-pub type Body<'a> = &'a str;
+use tokio::{io::{AsyncReadExt, AsyncWriteExt}, net::TcpStream};
+pub type Body = Vec<u8>;
 
 pub struct HttpClient {
-    timeout: Duration, 
-    resolver: Resolver
 }
 
 impl HttpClient {
-    fn new(timeout: Duration, resolver: Resolver) -> HttpClient{
-        HttpClient{
-            timeout,
-            resolver
-        }
+    pub fn new() -> HttpClient{
+        HttpClient{}
     }
 
-    fn http_get(&self, url: &str) -> Result<Body<'_>, Box<dyn Error>>{
-        let uri = Url::parse(url)?;
-        let conn: TcpStream;
+    pub async fn http_get(&self, addr: &str, path: &str, host: &str) -> Result<Body, Box<dyn Error>>{
+        let mut conn: TcpStream = TcpStream::connect((addr, 80)).await?;
+        let request = format!(
+            "GET {} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\n\r\n",
+            path,
+            host
+        );
+
+        conn.write(request.as_bytes()).await?;
         
+        let mut body: Vec<u8> = vec![];
 
-        match uri.host_str() {
-            Some(host) => {
-                let mut addr: String = String::from("");
-                if let Some(ip) = self.resolver.lookup_ip(host)?.iter().next() {
-                    addr = ip.to_string();
+        // read all until EOF
+        loop {
+            let mut buff: [u8; 1042] = [0; 1042];
+            let len = conn.read(&mut buff).await?;    
+
+            if len == 0 {
+                break;
+            }
+
+            for byte in buff {
+                if byte == 0x00 {
+                    continue;
                 }
 
-                if addr.is_empty() {
-                    return Err(Box::new(AddrEmpty));
-                }
-
-                conn = TcpStream::connect((addr, 80))?;
+                body.push(byte);
             }
-            None => {
-                return Err(Box::new(HostError));
-            }
-        }
-
-        Ok("")
+        };
+        
+        Ok(body)
     }
 }
 

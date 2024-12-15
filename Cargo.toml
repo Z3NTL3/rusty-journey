@@ -1,5 +1,11 @@
 [workspace]
+resolver = "1"
 
-members = [
+members = [ "crates/mh-async2",
     "crates/multithreaded-async"
 ]
+
+
+[workspace.dependencies]
+tokio = { version = "1.21.0", features = ["full"] }
+reqwest = { version = "0.12", features = ["json"] }

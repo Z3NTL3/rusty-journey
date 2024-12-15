@@ -3,8 +3,9 @@ use std::{
     error::Error,  
     time::Duration
 };
+use errors::EmptyBody;
 use tokio::{io::{AsyncReadExt, AsyncWriteExt}, net::TcpStream};
-pub type Body = Vec<u8>;
+pub type Response = String;
 
 pub struct HttpClient {
 }
@@ -14,7 +15,7 @@ impl HttpClient {
         HttpClient{}
     }
 
-    pub async fn http_get(&self, addr: &str, path: &str, host: &str) -> Result<Body, Box<dyn Error>>{
+    pub async fn http_get(&self, addr: &str, path: &str, host: &str) -> Result<Response, Box<dyn Error>>{
         let mut conn: TcpStream = TcpStream::connect((addr, 80)).await?;
         let request = format!(
             "GET {} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\n\r\n",
@@ -24,26 +25,11 @@ impl HttpClient {
 
         conn.write(request.as_bytes()).await?;
         
-        let mut body: Vec<u8> = vec![];
+        let mut body: String = String::from("");
+        if conn.read_to_string(&mut body).await? == 0 { 
+            return Err(Box::new(EmptyBody));
+        }
 
-        // read all until EOF
-        loop {
-            let mut buff: [u8; 1042] = [0; 1042];
-            let len = conn.read(&mut buff).await?;    
-
-            if len == 0 {
-                break;
-            }
-
-            for byte in buff {
-                if byte == 0x00 {
-                    continue;
-                }
-
-                body.push(byte);
-            }
-        };
-        
         Ok(body)
     }
 }
@@ -54,30 +40,15 @@ pub mod errors {
     use std::error::Error;
 
     #[derive(Debug)]
-    pub struct HostError;
+    pub struct EmptyBody;
 
-    impl Display for HostError {
+    impl Display for EmptyBody {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            write!(f, "host string invalid")
+            write!(f, "got empty body")
         }
     }
 
-    impl Error for HostError {
-        fn source(&self) -> Option<&(dyn Error + 'static)> {
-            None
-        }
-    }
-
-    #[derive(Debug)]
-    pub struct AddrEmpty;
-
-    impl Display for AddrEmpty {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            write!(f, "host string invalid")
-        }
-    }
-
-    impl Error for AddrEmpty {
+    impl Error for EmptyBody {
         fn source(&self) -> Option<&(dyn Error + 'static)> {
             None
         }

@@ -4,8 +4,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-sprintf = "0.4.0"
 tokio = { workspace = true }
-trust-dns-resolver = "0.23.2"
-url = "2.5.4"
 

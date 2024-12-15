@@ -2,14 +2,13 @@ use std::{
     sync::atomic::{AtomicU64, Ordering::SeqCst}, 
     sync::Arc, 
 };
-use multithreaded_async::http_client::{self, HttpClient};
+use multithreaded_async::http_client::HttpClient;
 use tokio::sync::mpsc::{
     channel,
     Sender,
 };
 
 use tokio::time::{sleep, Duration, timeout};
-use trust_dns_resolver::{config::{ResolverConfig, ResolverOpts}, Resolver};
 
 struct Counter {
     count: AtomicU64,

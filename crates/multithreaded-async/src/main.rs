@@ -35,13 +35,13 @@ async fn main() {
     let client = HttpClient::new();
 
     let res = timeout(
-        Duration::from_nanos(1), 
+        Duration::from_millis(500), 
         client.http_get("44.196.3.45", "/headers", "httpbin.org")
     ).await.unwrap();
 
     match res {
         Ok(res) => {
-            println!("{:?}", std::str::from_utf8(&res).unwrap())
+            println!("{:?}", res)
         },
         Err(err) => println!("{}", err.to_string())
     }

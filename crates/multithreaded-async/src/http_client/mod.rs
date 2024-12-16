@@ -1,21 +1,49 @@
 pub use self::errors::EmptyBody;
-use std::error::Error;
+use std::{error::Error, sync::Arc};
+use errors::{IPTrans, NoHostPort};
 use tokio::{io::{AsyncReadExt, AsyncWriteExt}, net::TcpStream};
+use url::Url;
+use async_std_resolver::AsyncStdResolver;
+
+
 pub type Response = String;
 
-pub struct HttpClient {}
+pub struct HttpClient {
+    resolver: Arc<AsyncStdResolver>
+}
 
 impl HttpClient {
-    pub fn new() -> HttpClient{
-        HttpClient{}
+    pub fn new(resolver: AsyncStdResolver) -> HttpClient{
+        HttpClient{
+            resolver: Arc::new(resolver)
+        }
     }
 
-    pub async fn http_get(&self, addr: &str, path: &str, host: &str) -> Result<Response, Box<dyn Error>>{
-        let mut conn: TcpStream = TcpStream::connect((addr, 80)).await?;
+    pub async fn http_get(&self, url: &str) -> Result<Response, Box<dyn Error>> {
+        let uri = Url::parse(url)?;
         
+        let host = uri.host_str().unwrap_or("");
+        let port = uri.port().unwrap_or(80);
+
+        if host.is_empty() {
+            return Err(Box::new(NoHostPort));
+        }
+        
+        let mut ip = String::from("");
+
+        // ip translation
+        if let Some(addr) = self.resolver.ipv4_lookup(host).await?.iter().next() {
+            ip = addr.to_string();
+        }
+
+        if ip.is_empty() {
+            return Err(Box::new(IPTrans));
+        }
+
+        let mut conn: TcpStream = TcpStream::connect((ip, port)).await?;
         let request = format!(
             "GET {} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\n\r\n",
-            path,
+            uri.path(),
             host
         );
 
@@ -32,13 +60,13 @@ impl HttpClient {
 
 
 pub mod errors {
-    use std::fmt::{self, *};
+    use std::fmt::{self};
     use std::error::Error;
 
     #[derive(Debug)]
     pub struct EmptyBody;
 
-    impl Display for EmptyBody {
+    impl fmt::Display for EmptyBody {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             write!(f, "got empty body")
         }
@@ -49,4 +77,36 @@ pub mod errors {
             None
         }
     }
+
+
+    #[derive(Debug)]
+    pub struct NoHostPort;
+
+    impl fmt::Display for NoHostPort {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "host and/or port cannot be empty")
+        }
+    }
+
+    impl Error for NoHostPort {
+        fn source(&self) -> Option<&(dyn Error + 'static)> {
+            None
+        }
+    }
+
+    #[derive(Debug)]
+    pub struct IPTrans;
+
+    impl fmt::Display for IPTrans {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "ip translation failed")
+        }
+    }
+
+    impl Error for IPTrans {
+        fn source(&self) -> Option<&(dyn Error + 'static)> {
+            None
+        }
+    }
+
 }

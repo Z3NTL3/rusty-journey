@@ -1,7 +1,7 @@
 [workspace]
 resolver = "1"
 
-members = [ "crates/mh-async2",
+members = [ 
     "crates/multithreaded-async"
 ]
 

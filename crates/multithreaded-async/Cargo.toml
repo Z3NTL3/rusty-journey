@@ -4,5 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+async-std-resolver = "0.24.2"
 tokio = { workspace = true }
+url = "2.5.4"
 

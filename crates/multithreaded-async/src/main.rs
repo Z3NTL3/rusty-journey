@@ -7,7 +7,7 @@ use tokio::sync::mpsc::{
     channel,
     Sender,
 };
-
+use async_std_resolver::{config, resolver};
 use tokio::time::{sleep, Duration, timeout};
 
 struct Counter {
@@ -31,11 +31,15 @@ impl Counter {
 
 #[tokio::main]
 async fn main() {
-    let client = HttpClient::new();
+    let resolver = resolver(
+        config::ResolverConfig::default(),
+        config::ResolverOpts::default(),
+    ).await;
+    let client = HttpClient::new(resolver);
 
     let res = timeout(
         Duration::from_millis(500), 
-        client.http_get("44.196.3.45", "/headers", "httpbin.org")
+        client.http_get("https://httpbin.org/headers")
     ).await.unwrap();
 
     match res {

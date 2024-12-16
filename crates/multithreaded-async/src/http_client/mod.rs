@@ -9,17 +9,21 @@ use async_std_resolver::AsyncStdResolver;
 pub type Response = String;
 
 pub struct HttpClient {
-    resolver: Arc<AsyncStdResolver>
+    resolver: AsyncStdResolver
 }
 
 impl HttpClient {
     pub fn new(resolver: AsyncStdResolver) -> HttpClient{
         HttpClient{
-            resolver: Arc::new(resolver)
+            resolver
         }
     }
 
-    pub async fn http_get(&self, url: &str) -> Result<Response, Box<dyn Error>> {
+    // + sync needed cuz otherwise ``?`` error propogation wont work
+    // from has no auto impl for box<dyn error> + send  only
+    //
+    // for box<dyn error> + send + sync, it has
+    pub async fn http_get(&self, url: &str) -> Result<Response, Box<dyn Error + Send + Sync>> {
         let uri = Url::parse(url)?;
         
         let host = uri.host_str().unwrap_or("");

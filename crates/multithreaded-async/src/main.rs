@@ -1,33 +1,10 @@
-use std::{
-    sync::atomic::{AtomicU64, Ordering::SeqCst}, 
-    sync::Arc, 
-};
+use std::sync::Arc;
 use multithreaded_async::http_client::HttpClient;
-use tokio::sync::mpsc::{
-    channel,
-    Sender,
-};
+use tokio::sync::mpsc::channel;
 use async_std_resolver::{config, resolver};
-use tokio::time::{sleep, Duration, timeout};
+use tokio::time::{Duration, timeout};
 
-struct Counter {
-    count: AtomicU64,
-    max: u64,
-    limit_sig: Sender<String>
-}
-
-impl Counter {
-    // must call limit_reached before counting up
-    fn count_up(&self) {
-        self.count.fetch_add(1, SeqCst);
-    }
-
-    async fn limit_reached(&self) -> bool {
-        sleep(Duration::from_millis(100)).await; // just to give control back to the tokio runtime
-        // this async fn is useless i know
-        self.count.load(SeqCst) >= self.max
-    }
-}
+static BUFF_SIZE: u8 = 1;
 
 #[tokio::main]
 async fn main() {
@@ -35,49 +12,36 @@ async fn main() {
         config::ResolverConfig::default(),
         config::ResolverOpts::default(),
     ).await;
-    let client = HttpClient::new(resolver);
+    let client = Arc::new(HttpClient::new(resolver));
 
-    let res = timeout(
-        Duration::from_millis(500), 
-        client.http_get("https://httpbin.org/headers")
-    ).await.unwrap();
+    let urls = vec![
+        "https://httpbin.org/headers",
+        "https://google.com",
+        "https://simpaix.net"
+    ];
 
-    match res {
-        Ok(res) => {
-            println!("{:?}", res)
-        },
-        Err(err) => println!("{}", err.to_string())
-    }
+    let (send, mut recv) = channel::<u8>(BUFF_SIZE.into());
+    for url_ in urls {
+        let client_ = client.clone();
+        let signal_ = send.clone();
 
-    return;
-    let (tx, mut rx) = channel::<String>(1);
+        tokio::spawn(async move {
+            let res = timeout(
+                Duration::from_secs(10), 
+                client_.http_get(url_)
+            ).await.unwrap();
 
-    let counter = Arc::new(
-        Counter{
-            count: AtomicU64::new(0),
-            max: 500,
-            limit_sig: tx
-        }
-    );
-    
-    // spawn taks
-    // the async runtime handles the rest simply said
-    for _ in 0..501 {
-        let c = counter.clone();
-        tokio::spawn( async move {
-            if !c.limit_reached().await {
-                return c.count_up();
+            match res {
+                Ok(res) => println!("{:?}", res),
+                Err(err) => println!("{:?}", err.to_string())
             }
-
-            // will be an error after closing but thats fine to ignore
-            let _ = c.limit_sig.send(String::from("limit reached")).await;
+        
+            let _ = signal_.send(1).await;
         });
     }
-    
-    if let Some(i) = rx.recv().await {
-        println!("got = {} - counter at: {}", i, counter.count.load(SeqCst));
 
-        drop(rx);
+    // receive all signals, then exit
+    for _ in 0..BUFF_SIZE {
+        recv.recv().await;
     }
-    
 }

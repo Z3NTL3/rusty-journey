@@ -19,10 +19,13 @@ impl HttpClient {
         }
     }
 
-    // + sync needed cuz otherwise ``?`` error propogation wont work
-    // from has no auto impl for box<dyn error> + send  only
+    // + sync is needed, otherwise ``?`` error propogation wont work
+    // 
+    // the reason for that is:
+    // the From trait has no auto impl for box<dyn error> + send
     //
-    // for box<dyn error> + send + sync, it has
+    // it has for:
+    // for box<dyn error> + send + sync
     pub async fn http_get<'a>(&self, url: &str) -> Result<Response, Box<dyn Error + Send + Sync + 'a>> {
         let uri = Url::parse(url)?;
         

@@ -23,7 +23,7 @@ impl HttpClient {
     // from has no auto impl for box<dyn error> + send  only
     //
     // for box<dyn error> + send + sync, it has
-    pub async fn http_get(&self, url: &str) -> Result<Response, Box<dyn Error + Send + Sync>> {
+    pub async fn http_get<'a>(&self, url: &str) -> Result<Response, Box<dyn Error + Send + Sync + 'a>> {
         let uri = Url::parse(url)?;
         
         let host = uri.host_str().unwrap_or("");

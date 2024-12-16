@@ -41,7 +41,7 @@ async fn main() {
     }
 
     // receive all signals, then exit
-    for _ in 0..BUFF_SIZE {
+    for _ in 0..3 {
         recv.recv().await;
     }
 }

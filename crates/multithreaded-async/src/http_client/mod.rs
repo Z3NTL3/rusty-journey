@@ -61,8 +61,10 @@ impl HttpClient {
         let connector = TlsConnector::from(self.config.clone());
         let dnsname = ServerName::try_from(String::from(host))?;
         
-        let conn: TcpStream = TcpStream::connect((ip, port)).await?;
-        let mut tls_conn = connector.connect(dnsname, conn).await?;
+        let mut tls_conn = connector.connect(
+            dnsname, 
+            TcpStream::connect((ip, port)).await?
+        ).await?;
 
         let request = format!(
             "GET {} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\n\r\n",

@@ -16,9 +16,8 @@ async fn main() {
 
     let urls = vec![
         "https://httpbin.org/headers",
-        "https://google.com",
-        "https://simpaix.net"
     ];
+    let tasks = urls.len();
 
     let (send, mut recv) = channel::<u8>(BUFF_SIZE.into());
     for url_ in urls {
@@ -28,7 +27,7 @@ async fn main() {
         tokio::spawn(async move {
             let res = timeout(
                 Duration::from_secs(10), 
-                client_.http_get(url_)
+                client_.https_get(url_)
             ).await.unwrap();
 
             match res {
@@ -41,7 +40,7 @@ async fn main() {
     }
 
     // receive all signals, then exit
-    for _ in 0..3 {
+    for _ in 0..tasks {
         recv.recv().await;
     }
 }

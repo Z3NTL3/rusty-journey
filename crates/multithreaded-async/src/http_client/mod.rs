@@ -47,7 +47,7 @@ impl HttpClient {
             return Err(Box::new(NoHostPort));
         }
         
-        let mut ip = String::from("");
+        let mut ip = String::default();
 
         // ip translation
         if let Some(addr) = self.resolver.ipv4_lookup(host).await?.iter().next() {

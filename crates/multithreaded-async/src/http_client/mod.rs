@@ -59,7 +59,7 @@ impl HttpClient {
         }
            
         let connector = TlsConnector::from(self.config.clone());
-        let dnsname = ServerName::try_from(String::from(host))?;
+        let dnsname = ServerName::try_from(host.to_owned())?;
         
         let mut tls_conn = connector.connect(
             dnsname, 

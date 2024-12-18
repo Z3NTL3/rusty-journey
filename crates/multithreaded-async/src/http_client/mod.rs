@@ -73,7 +73,6 @@ impl HttpClient {
         );
 
         tls_conn.write(request.as_bytes()).await?;
-        
         let mut body: String = String::default();
         if tls_conn.read_to_string(&mut body).await? == 0 { 
             return Err(Box::new(EmptyBody));

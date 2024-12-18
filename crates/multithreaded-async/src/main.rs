@@ -44,3 +44,66 @@ async fn main() {
         recv.recv().await;
     }
 }
+
+/*
+This code below is just to learn
+ */
+#[cfg(test)]
+#[tokio::main]
+async fn test_future(){
+    use std::{future::Future, net::TcpStream, ops::Deref, pin::Pin, task::{Context, Poll::{self, Pending, Ready}}};
+
+    use tokio::sync::Mutex;
+
+    #[derive(Clone)]
+    struct Socket {
+        addr: &'static str,
+        result: Arc<Mutex<Result<TcpStream, Box<dyn std::error::Error + Send+ Sync + 'static>>>>
+    }
+
+
+    // impl Clone for Socket {
+    //     fn clone(&self) -> Self {
+    //         Socket{addr:self.addr, result: self.result.clone() }
+    //     }
+    // }
+
+    impl Future for Socket {
+        type Output = Result<TcpStream, Box<dyn std::error::Error + Send+ Sync + 'static>>;
+
+        fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+            // testing something;
+            let res = &self.result.blocking_lock();
+            let t = *Deref::deref(res);
+            // match res.deref() {
+            //     Ok(stream) => Ready(Ok::<TcpStream, Box<dyn std::error::Error + Send+ Sync + 'static>>(*stream)),
+            //     Err(err) => Ready(*err),
+            // };
+
+            let waker = cx.waker().clone();
+
+            let sock =  Arc::clone(&self.result);
+            let addr = self.addr;
+
+            tokio::spawn(async move {
+                let conn = TcpStream::connect(addr);
+
+                let mut instance = sock.lock().await;
+                match conn {
+                    Ok(stream) => {
+                        *instance = Ok(stream);
+                    },
+                    Err(err) => {
+                        *instance = Err(Box::new(err));
+                    }
+                }
+
+                waker.wake_by_ref();
+            });
+
+            // todo stuff error prone, my intention is first to make it actually compile
+            Pending
+        }
+
+    }
+}

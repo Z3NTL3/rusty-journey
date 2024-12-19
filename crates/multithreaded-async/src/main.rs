@@ -73,8 +73,8 @@ async fn test_future(){
 
         fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
             // testing something;
-            let res = &self.result.blocking_lock();
-            let t = *Deref::deref(res);
+            let res = self.result.blocking_lock();
+            let t = *Deref::deref(&res);
             // match res.deref() {
             //     Ok(stream) => Ready(Ok::<TcpStream, Box<dyn std::error::Error + Send+ Sync + 'static>>(*stream)),
             //     Err(err) => Ready(*err),

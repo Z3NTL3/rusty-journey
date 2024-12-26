@@ -19,21 +19,19 @@ struct GlobalErrResponse {
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        let err = format!("{self}");
+        let res = axum::Json(GlobalErrResponse{
+            message: format!("{self}")
+        });
 
         match &self {
             AppError::Unknown => (
                 StatusCode::INTERNAL_SERVER_ERROR, 
-                axum::Json(GlobalErrResponse{
-                    message: err
-                })
+                res
             ).into_response(),
 
             AppError::RequestPayload => (
                 StatusCode::BAD_REQUEST, 
-                axum::Json(GlobalErrResponse{
-                    message: err
-                })
+                res
             ).into_response(),
         }
     }

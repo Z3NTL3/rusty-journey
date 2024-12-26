@@ -1,20 +1,60 @@
-use axum::{extract::Request, handler::Handler, middleware::{self, Next}, response::IntoResponse, routing::get, Extension, Router};
-use tower::Service;
+use axum::{extract::Request, handler::Handler, http::StatusCode, middleware::{self, Next}, response::{IntoResponse, Response}, routing::get, Extension, Json, Router};
+use serde::{self,Deserialize, Serialize};
+use thiserror::Error;
 
-async fn pass_some_data(mut req: Request, mut next: Next) -> impl IntoResponse {
+#[derive(Error, Debug)]
+pub enum AppError {
+    #[error("Oops, something went wrong!")]
+    Unknown,
+    #[error("Request payload has not been satisfied")]
+    RequestPayload
+}
+
+#[derive(Deserialize, Serialize)]
+struct GlobalErrResponse {
+    message: String
+}
+
+impl IntoResponse for AppError {
+    fn into_response(self) -> Response {
+        let err = format!("{self}");
+
+        match &self {
+            AppError::Unknown => (
+                StatusCode::INTERNAL_SERVER_ERROR, 
+                axum::Json(GlobalErrResponse{
+                    message: err
+                })
+            ).into_response(),
+
+            AppError::RequestPayload => (
+                StatusCode::BAD_REQUEST, 
+                axum::Json(GlobalErrResponse{
+                    message: err
+                })
+            ).into_response(),
+        }
+    }
+}
+
+async fn somedumbstuff() -> Result<(), AppError> {
+    Err(AppError::RequestPayload)
+}
+
+async fn pass_some_data(mut req: Request, next: Next) -> axum::response::Result<Response> {
+    somedumbstuff().await?;
+
     let mut data = String::default();
 
     match req.headers().get("X-Data") {
         Some(header) => {
             data = header.to_str().unwrap_or_default().to_owned();
         },
-        None => {
-            data = "none".to_string();
-        },
+        None => Err(AppError::RequestPayload)?,
     }
 
     req.extensions_mut().insert(data);
-    next.call(req).await
+    Ok(next.run(req).await)
 }
 
 async fn handler(data: Extension<String>) -> String {

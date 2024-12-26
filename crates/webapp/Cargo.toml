@@ -8,4 +8,5 @@ axum = "0.7.9"
 serde = { version = "1.0.216", features = ["derive"] }
 thiserror = "2.0.9"
 tokio.workspace = true
+tokio-util = { version = "0.7.13", features = ["io"]}
 tower = "0.5.2"

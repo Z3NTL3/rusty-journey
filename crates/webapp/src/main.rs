@@ -1,6 +1,8 @@
-use axum::{extract::Request, handler::Handler, http::StatusCode, middleware::{self, Next}, response::{IntoResponse, Response}, routing::get, Extension, Json, Router};
+use axum::{body::Body, extract::Request, handler::Handler, http::StatusCode, middleware::{self, Next}, response::{IntoResponse, Response}, routing::get, Extension, Json, Router};
 use serde::{self,Deserialize, Serialize};
 use thiserror::Error;
+use tokio::fs::File;
+use tokio_util::io::ReaderStream;
 
 #[derive(Error, Debug)]
 pub enum AppError {
@@ -10,7 +12,7 @@ pub enum AppError {
     RequestPayload
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Serialize)]
 struct GlobalErrResponse {
     message: String
 }
@@ -54,8 +56,31 @@ async fn pass_some_data(mut req: Request, next: Next) -> axum::response::Result<
     Ok(next.run(req).await)
 }
 
-async fn handler(data: Extension<String>) -> String {
-    data.0
+// streams file
+async fn handler(data: Extension<String>) -> axum::response::Result<Response> {
+    println!("data we got from the middleware: {}", data.0);
+    let file = File::open("test.mp4").await;
+    
+    match file {
+        Ok(f) => {
+            let body = Body::from_stream(ReaderStream::new(f));
+            let res = Response::builder()
+                .header("Content-Type", "video/mp4")
+                .body(body);
+
+            match res {
+                Ok(r) => Ok(r),
+                Err(e) => {
+                    println!("some error: {}", e);
+                    Err(AppError::Unknown)?
+                },
+            }
+        },
+        Err(err) => {
+            println!("{err}");
+            Err(AppError::Unknown)?
+        },
+    }
 }
 
 #[tokio::main]

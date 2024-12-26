@@ -44,43 +44,37 @@ async fn somedumbstuff() -> Result<(), AppError> {
 }
 
 async fn pass_some_data(mut req: Request, next: Next) -> axum::response::Result<Response> {
-    let mut data = String::default();
-    match req.headers().get("X-Data") {
-        Some(header) => {
-            data = header.to_str().unwrap_or_default().to_owned();
-        },
-        None => Err(AppError::RequestPayload)?,
-    }
+    let data = req.headers().get("X-Data").ok_or(AppError::RequestPayload)?
+        .to_str()
+        .map_err(|err| {
+            println!("got err: {err}");
+            AppError::RequestPayload
+        })?
+    .to_owned();
 
     req.extensions_mut().insert(data);
     Ok(next.run(req).await)
 }
 
+
 // streams file
 async fn handler(data: Extension<String>) -> axum::response::Result<Response> {
-    println!("data we got from the middleware: {}", data.0);
-    let file = File::open("test.mp4").await;
-    
-    match file {
-        Ok(f) => {
-            let body = Body::from_stream(ReaderStream::new(f));
-            let res = Response::builder()
-                .header("Content-Type", "video/mp4")
-                .body(body);
+    println!("data from middleware {}", data.0);
 
-            match res {
-                Ok(r) => Ok(r),
-                Err(e) => {
-                    println!("some error: {}", e);
-                    Err(AppError::Unknown)?
-                },
-            }
-        },
-        Err(err) => {
-            println!("{err}");
-            Err(AppError::Unknown)?
-        },
-    }
+    let file = File::open("test.mp4").await.map_err(|err| {
+        println!("got err: {err}");
+        AppError::Unknown
+    })?;
+    
+    let body = Body::from_stream(ReaderStream::new(file));
+    let res = Response::builder()
+        .header("Content-Type", "video/mp4")
+        .body(body).map_err(|err| {
+            println!("got err: {err}");
+            AppError::Unknown
+        })?;
+
+    Ok(res)
 }
 
 #[tokio::main]

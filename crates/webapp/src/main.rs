@@ -42,10 +42,7 @@ async fn somedumbstuff() -> Result<(), AppError> {
 }
 
 async fn pass_some_data(mut req: Request, next: Next) -> axum::response::Result<Response> {
-    somedumbstuff().await?;
-
     let mut data = String::default();
-
     match req.headers().get("X-Data") {
         Some(header) => {
             data = header.to_str().unwrap_or_default().to_owned();

@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use multithreaded_async::http_client::HttpClient;
 use tokio::sync::mpsc::channel;
 use async_std_resolver::{config, resolver};
@@ -12,10 +11,11 @@ async fn main() {
         config::ResolverConfig::default(),
         config::ResolverOpts::default(),
     ).await;
-    let client = Arc::new(HttpClient::new(resolver));
 
+    let client = HttpClient::new(resolver);
     let urls = vec![
         "https://httpbin.org/headers",
+        "https://httpbin.org/ip",
     ];
     let tasks = urls.len();
 
@@ -51,7 +51,7 @@ This code below is just to learn
 #[cfg(test)]
 #[tokio::main]
 async fn test_future(){
-    use std::{future::Future, net::TcpStream, pin::Pin, task::{Context, Poll::{self, Pending, Ready}}};
+    use std::{sync::Arc, future::Future, net::TcpStream, pin::Pin, task::{Context, Poll::{self, Pending}}};
 
     use tokio::sync::Mutex;
 

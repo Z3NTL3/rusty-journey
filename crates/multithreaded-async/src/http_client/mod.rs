@@ -9,6 +9,7 @@ use async_std_resolver::AsyncStdResolver;
 
 pub type Response = String;
 
+#[derive(Clone)]
 pub struct HttpClient {
     resolver: AsyncStdResolver,
     config: Arc<rustls::ClientConfig>

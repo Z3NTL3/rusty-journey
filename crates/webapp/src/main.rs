@@ -1,11 +1,14 @@
-use std::{env, path::Path};
-
-use axum::{body::Body, extract::Request, handler::{Handler, HandlerWithoutStateExt}, http::StatusCode, middleware::{self, Next}, response::{IntoResponse, Response}, routing::get, serve::Serve, Extension, Json, Router};
-use serde::{self,Deserialize, Serialize};
+use axum::{body::Body, extract::Request, handler::{Handler, HandlerWithoutStateExt}, http::StatusCode, middleware::{self, Next}, response::{IntoResponse, Response}, routing::get, Extension, Router};
+use serde::{self, Serialize};
 use thiserror::Error;
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
 use tower_http::services::ServeDir;
+
+#[derive(Serialize)]
+struct GlobalErrResponse {
+    message: String
+}
 
 #[derive(Error, Debug)]
 pub enum AppError {
@@ -13,11 +16,6 @@ pub enum AppError {
     Unknown,
     #[error("Request payload has not been satisfied")]
     RequestPayload
-}
-
-#[derive(Serialize)]
-struct GlobalErrResponse {
-    message: String
 }
 
 impl IntoResponse for AppError {
@@ -38,10 +36,6 @@ impl IntoResponse for AppError {
             ).into_response(),
         }
     }
-}
-
-async fn somedumbstuff() -> Result<(), AppError> {
-    Err(AppError::RequestPayload)
 }
 
 async fn pass_some_data(mut req: Request, next: Next) -> axum::response::Result<Response> {

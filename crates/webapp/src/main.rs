@@ -1,8 +1,11 @@
-use axum::{body::Body, extract::Request, handler::Handler, http::StatusCode, middleware::{self, Next}, response::{IntoResponse, Response}, routing::get, Extension, Json, Router};
+use std::{env, path::Path};
+
+use axum::{body::Body, extract::Request, handler::Handler, http::StatusCode, middleware::{self, Next}, response::{IntoResponse, Response}, routing::get, serve::Serve, Extension, Json, Router};
 use serde::{self,Deserialize, Serialize};
 use thiserror::Error;
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
+use tower_http::services::ServeDir;
 
 #[derive(Error, Debug)]
 pub enum AppError {
@@ -54,7 +57,6 @@ async fn pass_some_data(mut req: Request, next: Next) -> axum::response::Result<
     Ok(next.run(req).await)
 }
 
-
 // streams file
 async fn handler(data: Extension<String>) -> axum::response::Result<Response> {
     println!("data from middleware {}", data.0);
@@ -75,11 +77,17 @@ async fn handler(data: Extension<String>) -> axum::response::Result<Response> {
     Ok(res)
 }
 
+async fn handler_404() -> impl IntoResponse {
+    (StatusCode::NOT_FOUND, "nothing to see here")
+}
+
 #[tokio::main]
 async fn main() {
     let layered_handler = handler.layer(middleware::from_fn(pass_some_data));
     let app = Router::new()
-        .route("/", get(layered_handler));
+        .route("/", get(layered_handler))
+        .nest_service("/static", ServeDir::new("assets"))
+        .fallback(handler_404);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();

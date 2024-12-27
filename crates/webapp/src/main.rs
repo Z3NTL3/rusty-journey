@@ -1,6 +1,6 @@
 use std::{env, path::Path};
 
-use axum::{body::Body, extract::Request, handler::Handler, http::StatusCode, middleware::{self, Next}, response::{IntoResponse, Response}, routing::get, serve::Serve, Extension, Json, Router};
+use axum::{body::Body, extract::Request, handler::{Handler, HandlerWithoutStateExt}, http::StatusCode, middleware::{self, Next}, response::{IntoResponse, Response}, routing::get, serve::Serve, Extension, Json, Router};
 use serde::{self,Deserialize, Serialize};
 use thiserror::Error;
 use tokio::fs::File;
@@ -83,11 +83,14 @@ async fn handler_404() -> impl IntoResponse {
 
 #[tokio::main]
 async fn main() {
+    let service_404 = handler_404.into_service();
+    let assets = ServeDir::new("assets").not_found_service(service_404);
+
     let layered_handler = handler.layer(middleware::from_fn(pass_some_data));
     let app = Router::new()
         .route("/", get(layered_handler))
-        .nest_service("/static", ServeDir::new("assets"))
-        .fallback(handler_404);
+        .nest_service("/static", assets.clone())
+        .fallback_service(assets);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();

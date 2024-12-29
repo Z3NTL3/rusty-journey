@@ -15,7 +15,7 @@ struct GlobalErrResponse {
 #[derive(Error, Debug)]
 pub enum AppError {
     #[error("Oops, something went wrong!")]
-    Unknown,
+    Oops,
     #[error("Request payload has not been satisfied")]
     RequestPayload
 }
@@ -27,7 +27,7 @@ impl IntoResponse for AppError {
         });
 
         match &self {
-            AppError::Unknown => (
+            AppError::Oops => (
                 StatusCode::INTERNAL_SERVER_ERROR, 
                 res
             ).into_response(),
@@ -59,7 +59,7 @@ async fn handler(data: Extension<String>) -> axum::response::Result<Response> {
 
     let file = File::open("test.mp4").await.map_err(|err| {
         println!("got err: {err}");
-        AppError::Unknown
+        AppError::Oops
     })?;
     
     let body = Body::from_stream(ReaderStream::new(file));
@@ -67,21 +67,21 @@ async fn handler(data: Extension<String>) -> axum::response::Result<Response> {
         .header("Content-Type", "video/mp4")
         .body(body).map_err(|err| {
             println!("got err: {err}");
-            AppError::Unknown
+            AppError::Oops
         })?;
 
     Ok(res)
 }
 
-async fn handler_404(template: State<Arc<Environment<'_>>>) -> axum::response::Result<Response> {
+async fn handler_404(template: State<Arc<Environment<'static>>>) -> axum::response::Result<Response> {
     let template = template.get_template("error.html").map_err(|e|{
         println!("{e}");
-        AppError::Unknown
+        AppError::Oops
     })?;
 
     let res = template.render(context! {text => "hello world"}).map_err(|e|{
         println!("{e}");
-        AppError::Unknown
+        AppError::Oops
     })?;
     Ok(Html(res).into_response())
 }

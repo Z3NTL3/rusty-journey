@@ -92,7 +92,7 @@ async fn main() {
     templates.set_loader(minijinja::path_loader("crates/webapp/views"));
 
     let service_404 = handler_404.with_state(templates.clone().into());
-    let assets = ServeDir::new("assets").not_found_service(service_404.clone());
+    let assets = ServeDir::new("crates/webapp/assets").not_found_service(service_404.clone());
 
     let layered_handler = handler.layer(middleware::from_fn(pass_some_data));
     let app = Router::new()

@@ -1,12 +1,10 @@
-use std::{future::Future, pin::Pin, sync::Arc, task::Poll};
-
-use axum::{body::Body, extract::{Request, State}, handler::{Handler, HandlerWithoutStateExt}, http::StatusCode, middleware::{self, Next}, response::{Html, IntoResponse, Response}, routing::get, Extension, Router};
+use std::sync::Arc;
+use axum::{body::Body, extract::{Request, State}, handler::Handler, http::StatusCode, middleware::{self, Next}, response::{Html, IntoResponse, Response}, routing::get, Extension, Router};
 use minijinja::{context, Environment};
 use serde::{self, Serialize};
 use thiserror::Error;
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
-use tower::{MakeService, Service};
 use tower_http::services::ServeDir;
 
 #[derive(Serialize)]
@@ -80,7 +78,7 @@ async fn handler_404(template: State<Arc<Environment<'_>>>) -> axum::response::R
         println!("{e}");
         AppError::Unknown
     })?;
-    
+
     let res = template.render(context! {text => "hello world"}).map_err(|e|{
         println!("{e}");
         AppError::Unknown

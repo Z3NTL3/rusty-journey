@@ -90,6 +90,9 @@ async fn handler_404(template: State<Arc<Environment<'_>>>) -> axum::response::R
 async fn main() {
     let mut templates = Environment::new();
     templates.set_loader(minijinja::path_loader("crates/webapp/views"));
+    templates.add_filter("test", |a: u8| {
+        5 + a
+    });
 
     let service_404 = handler_404.with_state(templates.clone().into());
     let assets = ServeDir::new("crates/webapp/assets").not_found_service(service_404.clone());

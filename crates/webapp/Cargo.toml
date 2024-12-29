@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 axum = "0.7.9"
+minijinja = { version = "2.5.0", features = ["loader"]}
 serde = { version = "1.0.216", features = ["derive"] }
 thiserror = "2.0.9"
 tokio.workspace = true

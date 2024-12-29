@@ -1,8 +1,12 @@
-use axum::{body::Body, extract::Request, handler::{Handler, HandlerWithoutStateExt}, http::StatusCode, middleware::{self, Next}, response::{IntoResponse, Response}, routing::get, Extension, Router};
+use std::{future::Future, pin::Pin, sync::Arc, task::Poll};
+
+use axum::{body::Body, extract::{Request, State}, handler::{Handler, HandlerWithoutStateExt}, http::StatusCode, middleware::{self, Next}, response::{Html, IntoResponse, Response}, routing::get, Extension, Router};
+use minijinja::{context, Environment};
 use serde::{self, Serialize};
 use thiserror::Error;
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
+use tower::{MakeService, Service};
 use tower_http::services::ServeDir;
 
 #[derive(Serialize)]
@@ -71,20 +75,33 @@ async fn handler(data: Extension<String>) -> axum::response::Result<Response> {
     Ok(res)
 }
 
-async fn handler_404() -> impl IntoResponse {
-    (StatusCode::NOT_FOUND, "nothing to see here")
+async fn handler_404(template: State<Arc<Environment<'_>>>) -> axum::response::Result<Response> {
+    let template = template.get_template("error.html").map_err(|e|{
+        println!("{e}");
+        AppError::Unknown
+    })?;
+    
+    let res = template.render(context! {text => "hello world"}).map_err(|e|{
+        println!("{e}");
+        AppError::Unknown
+    })?;
+    Ok(Html(res).into_response())
 }
 
 #[tokio::main]
 async fn main() {
-    let service_404 = handler_404.into_service();
-    let assets = ServeDir::new("assets").not_found_service(service_404);
+    let mut templates = Environment::new();
+    templates.set_loader(minijinja::path_loader("crates/webapp/views"));
+
+    let service_404 = handler_404.with_state(templates.clone().into());
+    let assets = ServeDir::new("assets").not_found_service(service_404.clone());
 
     let layered_handler = handler.layer(middleware::from_fn(pass_some_data));
     let app = Router::new()
         .route("/", get(layered_handler))
-        .nest_service("/static", assets.clone())
-        .fallback_service(assets);
+        .nest_service("/static", assets)
+        .fallback_service(service_404)
+        .with_state(templates);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();

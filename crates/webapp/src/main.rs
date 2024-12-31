@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{f32::consts::E, sync::Arc};
 use axum::{async_trait, body::Body, extract::{FromRequestParts, Request, State}, handler::Handler, http::{request::Parts, HeaderValue, StatusCode}, middleware::{self, Next}, response::{Html, IntoResponse, Response}, routing::get, Extension, Router};
 use minijinja::{context, Environment};
 use serde::{self, Serialize};
@@ -18,8 +18,8 @@ pub enum AppError {
     Oops,
     #[error("Request payload has not been satisfied")]
     RequestPayload,
-    #[error("Oops something went wrong: referal-id-`{0}`")]
-    OopsWithReferal(String),
+    #[error("Oops something went wrong: {detail}")]
+    OopsWithDetails{code: StatusCode, detail: String},
 }
 
 impl IntoResponse for AppError {
@@ -39,13 +39,9 @@ impl IntoResponse for AppError {
                 res
             ).into_response(),
 
-            AppError::OopsWithReferal(err) => {
-                // shadow it in new scope
-                let mut res = res;
-                res.message = err.clone();
-
+            AppError::OopsWithDetails{code, ..} => {
                 (
-                    StatusCode::BAD_REQUEST, 
+                    code, 
                     res
                 ).into_response()
             },
@@ -89,12 +85,18 @@ async fn handler(data: Extension<String>) -> axum::response::Result<Response> {
 async fn handler_404(template: State<Arc<Environment<'static>>>) -> axum::response::Result<Response> {
     let template = template.get_template("error.html").map_err(|e|{
         println!("{e}");
-        AppError::Oops
+        AppError::OopsWithDetails { 
+            code: StatusCode::INTERNAL_SERVER_ERROR, 
+            detail: "Failed to get error.html template".into() 
+        }
     })?;
 
     let res = template.render(context! {text => "hello world"}).map_err(|e|{
         println!("{e}");
-        AppError::Oops
+        AppError::OopsWithDetails { 
+            code: StatusCode::INTERNAL_SERVER_ERROR, 
+            detail: "Failed to render error.html template".into() 
+        }
     })?;
     Ok(Html(res).into_response())
 }

@@ -17,7 +17,9 @@ pub enum AppError {
     #[error("Oops, something went wrong!")]
     Oops,
     #[error("Request payload has not been satisfied")]
-    RequestPayload
+    RequestPayload,
+    #[error("Oops something went wrong: referal-id-`{0}`")]
+    OopsWithReferal(String),
 }
 
 impl IntoResponse for AppError {
@@ -26,7 +28,7 @@ impl IntoResponse for AppError {
             message: format!("{self}")
         });
 
-        match &self {
+        match self {
             AppError::Oops => (
                 StatusCode::INTERNAL_SERVER_ERROR, 
                 res
@@ -36,6 +38,17 @@ impl IntoResponse for AppError {
                 StatusCode::BAD_REQUEST, 
                 res
             ).into_response(),
+
+            AppError::OopsWithReferal(err) => {
+                // shadow it in new scope
+                let mut res = res;
+                res.message = err.clone();
+
+                (
+                    StatusCode::BAD_REQUEST, 
+                    res
+                ).into_response()
+            },
         }
     }
 }

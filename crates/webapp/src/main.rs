@@ -100,7 +100,7 @@ where
         let extracted_part = parts.headers.get("X-Data")
             .map_or(Ok(""), |v| v.to_str())
             .map_err(|e| {
-                println!("got error from ExtractUserAgent extractor: {e}");
+                println!("got error from ExtractXData extractor: {e}");
                 AppError::Oops // dont expose exact error to client
             })?;
 
@@ -108,13 +108,13 @@ where
     }
 }
 
-async fn some_handler(x_data: ExtractXData, template: State<Arc<Environment<'static>>>) -> axum::response::Result<Response> {
+async fn some_handler(ExtractXData(x_data): ExtractXData, template: State<Arc<Environment<'static>>>) -> axum::response::Result<Response> {
     let template = template.get_template("error.html").map_err(|e|{
         println!("{e}");
         AppError::Oops
     })?;
 
-    let res = template.render(context! {text => format!("hello, got X-Data: {}", x_data.0)}).map_err(|e|{
+    let res = template.render(context! {text => format!("hello, got X-Data: {}", x_data)}).map_err(|e|{
         println!("{e}");
         AppError::Oops
     })?;

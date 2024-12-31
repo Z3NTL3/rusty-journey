@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use axum::{body::Body, extract::{Request, State}, handler::Handler, http::StatusCode, middleware::{self, Next}, response::{Html, IntoResponse, Response}, routing::get, Extension, Router};
+use axum::{async_trait, body::Body, extract::{FromRequestParts, Request, State}, handler::Handler, http::{request::Parts, HeaderValue, StatusCode}, middleware::{self, Next}, response::{Html, IntoResponse, Response}, routing::get, Extension, Router};
 use minijinja::{context, Environment};
 use serde::{self, Serialize};
 use thiserror::Error;
@@ -69,7 +69,7 @@ async fn handler(data: Extension<String>) -> axum::response::Result<Response> {
             println!("got err: {err}");
             AppError::Oops
         })?;
-
+        
     Ok(res)
 }
 
@@ -86,6 +86,42 @@ async fn handler_404(template: State<Arc<Environment<'static>>>) -> axum::respon
     Ok(Html(res).into_response())
 }
 
+
+struct ExtractXData(String);
+
+#[async_trait]
+impl<S> FromRequestParts<S> for ExtractXData
+where
+    S: Send + Sync,
+{
+    type Rejection = AppError;
+
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        let extracted_part = parts.headers.get("X-Data")
+            .map_or(Ok(""), |v| v.to_str())
+            .map_err(|e| {
+                println!("got error from ExtractUserAgent extractor: {e}");
+                AppError::Oops // dont expose exact error to client
+            })?;
+
+        Ok(ExtractXData(extracted_part.into()))
+    }
+}
+
+async fn some_handler(x_data: ExtractXData, template: State<Arc<Environment<'static>>>) -> axum::response::Result<Response> {
+    let template = template.get_template("error.html").map_err(|e|{
+        println!("{e}");
+        AppError::Oops
+    })?;
+
+    let res = template.render(context! {text => format!("hello, got X-Data: {}", x_data.0)}).map_err(|e|{
+        println!("{e}");
+        AppError::Oops
+    })?;
+    Ok(Html(res).into_response())
+}
+
+
 #[tokio::main]
 async fn main() {
     let mut templates = Environment::new();
@@ -94,15 +130,17 @@ async fn main() {
         5 + a
     });
 
-    let service_404 = handler_404.with_state(templates.clone().into());
+    let engine: Arc<Environment<'_>> = templates.into();
+    let service_404 = handler_404.with_state(engine.clone());
     let assets = ServeDir::new("crates/webapp/assets").not_found_service(service_404.clone());
 
     let layered_handler = handler.layer(middleware::from_fn(pass_some_data));
     let app = Router::new()
         .route("/", get(layered_handler))
+        .route("/x-data", get(some_handler))
         .nest_service("/static", assets)
         .fallback_service(service_404)
-        .with_state(templates);
+        .with_state(engine);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();

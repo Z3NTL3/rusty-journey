@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+<<<<<<< HEAD
 axum = "0.7.9"
 minijinja = { version = "2.5.0", features = ["loader"]}
 serde = { version = "1.0.216", features = ["derive"] }
@@ -12,3 +13,9 @@ tokio.workspace = true
 tokio-util = { version = "0.7.13", features = ["io"]}
 tower = "0.5.2"
 tower-http = {version="0.6.2", features = ["fs"]}
+=======
+anyhow = "1.0.95"
+axum = "0.7.9"
+tokio = { workspace = true }
+tower = "0.5.2"
+>>>>>>> 772d9bd (.)

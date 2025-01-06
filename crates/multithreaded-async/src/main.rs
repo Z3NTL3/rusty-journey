@@ -60,7 +60,7 @@ async fn test_future(){
         addr: &'static str,
         result: Arc<Mutex<Result<TcpStream, Box<dyn std::error::Error + Send+ Sync + 'static>>>>
     }
-
+    
     impl Future for Socket {
         type Output = Result<TcpStream, Box<dyn std::error::Error + Send+ Sync + 'static>>;
 

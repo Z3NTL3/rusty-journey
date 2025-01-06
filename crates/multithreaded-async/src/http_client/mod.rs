@@ -85,8 +85,11 @@ impl HttpClient {
 
 
 pub mod errors {
+    use std::cell::RefCell;
     use std::fmt::{self};
     use std::error::Error;
+
+    use super::Response;
 
     #[derive(Debug)]
     pub struct EmptyBody;
@@ -102,7 +105,6 @@ pub mod errors {
             None
         }
     }
-
 
     #[derive(Debug)]
     pub struct NoHostPort;

@@ -1,51 +1,57 @@
-pub mod whois {
-    use std::net::SocketAddr;
-    use std::str::FromStr;
-    use hickory_client::client::ClientHandle;
-    use hickory_client::proto::iocompat::AsyncIoTokioAsStd;
-    use hickory_client::{client::AsyncClient, rr::Name, tcp::TcpClientStream};
-    use tokio::net::TcpStream;
-    use whoisthere::parse_info;
-    use std::future::Future;
+use errors::WhoisError;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use std::net::SocketAddr;
+use hickory_client::proto::iocompat::AsyncIoTokioAsStd;
+use hickory_client::{client::AsyncClient, tcp::TcpClientStream};
+use tokio::net::TcpStream;
+use whoisthere::parse_info;
+use std::future::Future;
+pub use whoisthere::DomainProps;
 
-    pub use whoisthere::DomainProps;
+#[derive(Clone)]
+pub struct Whois{
+    client: AsyncClient
+}
 
-    #[derive(Clone)]
-    pub struct Whois{
-        client: AsyncClient
+pub trait WhoisResolver: Sized {
+    type Error;
+    fn new(ns: SocketAddr) -> impl Future<Output = Result<Whois, Self::Error>>;
+    fn query(&mut self, whois_server: &str, domain2_lookup: &str) -> impl Future<Output = Result<DomainProps, Self::Error>>;
+}
+
+impl WhoisResolver for Whois {
+    type Error = Box<dyn std::error::Error>;
+    async fn new(ns: SocketAddr) -> Result<Whois, Self::Error> {
+        let (stream, sender) =
+            TcpClientStream::<AsyncIoTokioAsStd<TcpStream>>::new(ns);
+        let (client, bg) = AsyncClient::new(stream, sender, None).await?;
+        tokio::spawn(bg);
+        
+        Ok(Whois { client })
     }
     
-    pub trait WhoisResolver: Sized {
-        type Error;
-        fn new(ns: SocketAddr) -> impl Future<Output = Result<Whois, Self::Error>>;
-        fn query(&mut self, target: &str) -> impl Future<Output = Result<DomainProps, Self::Error>>;
+    async fn query(&mut self, whois_server: &str, domain2_lookup: &str) -> Result<DomainProps, Self::Error> {
+        let mut conn = TcpStream::connect(whois_server).await?;
+        conn.write(format!("{whois_server}").as_bytes()).await?;
+
+        let mut buff: Vec<u8> = vec![];
+        let n = conn.read(&mut buff).await?;
+
+        if n == 0 {
+            return Err(Box::new(WhoisError::WhoisServerIO { ctx: "Wrote to WHOIS server, but got no resposne" }));
+        }
+
+        let whois_data = String::from_utf8(buff)?;
+        Ok(parse_info(domain2_lookup, &whois_data))
     }
+}
 
-    impl WhoisResolver for Whois {
-        type Error = Box<dyn std::error::Error>;
-        async fn new(ns: SocketAddr) -> Result<Whois, Self::Error> {
-            let (stream, sender) =
-                TcpClientStream::<AsyncIoTokioAsStd<TcpStream>>::new(ns);
-            let (client, bg) = AsyncClient::new(stream, sender, None).await?;
-            tokio::spawn(bg);
-            
-            Ok(Whois { client })
-        }
-        
-        async fn query(&mut self, target: &str) -> Result<DomainProps, Self::Error> {
-            let name =  Name::from_str(target);
-            if let Err(res) = name {
-                return Err::<DomainProps, Self::Error>(Box::new(res));
-            }
+pub mod errors {
+    use thiserror::Error;
 
-            let response = self.client.query(
-                name.unwrap_or_default(), 
-                hickory_client::rr::DNSClass::IN, 
-                hickory_client::rr::RecordType::A
-            ).await?;
-
-            let parsed  = parse_info(target, response.to_string().as_str());
-            Ok(parsed)
-        }
+    #[derive(Error, Debug)]
+    pub enum WhoisError {
+        #[error("Error caused by I/O on the WHOIS server: {ctx}")]
+        WhoisServerIO{ctx: &'static str},
     }
 }

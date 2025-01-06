@@ -9,25 +9,17 @@ use std::future::Future;
 pub use whoisthere::DomainProps;
 
 #[derive(Clone)]
-pub struct Whois{
-    client: AsyncClient
-}
-
+pub struct Whois;
 pub trait WhoisResolver: Sized {
     type Error;
-    fn new(ns: SocketAddr) -> impl Future<Output = Result<Whois, Self::Error>>;
+    fn new() -> impl Future<Output = Whois>;
     fn query(&mut self, whois_server: &str, domain2_lookup: &str) -> impl Future<Output = Result<DomainProps, Self::Error>>;
 }
 
 impl WhoisResolver for Whois {
     type Error = Box<dyn std::error::Error>;
-    async fn new(ns: SocketAddr) -> Result<Whois, Self::Error> {
-        let (stream, sender) =
-            TcpClientStream::<AsyncIoTokioAsStd<TcpStream>>::new(ns);
-        let (client, bg) = AsyncClient::new(stream, sender, None).await?;
-        tokio::spawn(bg);
-        
-        Ok(Whois { client })
+    async fn new() -> Whois {
+        Whois
     }
     
     async fn query(&mut self, whois_server: &str, domain2_lookup: &str) -> Result<DomainProps, Self::Error> {

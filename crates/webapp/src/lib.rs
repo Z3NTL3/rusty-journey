@@ -24,8 +24,8 @@ impl WhoisResolver for Whois {
         
         let mut data: Vec<u8> = vec![];
         loop {
-            let mut buff: Vec<u8> = Vec::with_capacity(1042);
-            let n = conn.read_exact(&mut buff).await?;
+            let mut buff: Vec<u8> = vec![0; 1024];
+            let n = conn.read_buf(&mut buff).await?;
 
             if n == 0 {
                 break;

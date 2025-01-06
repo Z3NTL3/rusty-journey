@@ -1,4 +1,4 @@
-use std::{f32::consts::E, sync::Arc};
+use std::sync::Arc;
 use axum::{async_trait, body::Body, extract::{FromRequestParts, Request, State}, handler::Handler, http::{request::Parts, HeaderValue, StatusCode}, middleware::{self, Next}, response::{Html, IntoResponse, Response}, routing::get, Extension, Router};
 use minijinja::{context, Environment};
 use serde::{self, Serialize};
@@ -100,8 +100,6 @@ async fn handler_404(template: State<Arc<Environment<'static>>>) -> axum::respon
     })?;
     Ok(Html(res).into_response())
 }
-
-
 struct ExtractXData(String);
 
 #[async_trait]

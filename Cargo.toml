@@ -2,14 +2,8 @@
 resolver = "1"
 
 members = [ 
-<<<<<<< HEAD
     "crates/multithreaded-async"
 , "crates/webapp"]
-=======
-    "crates/multithreaded-async",
-    "crates/webapp"
-]
->>>>>>> 772d9bd (.)
 
 
 [workspace.dependencies]

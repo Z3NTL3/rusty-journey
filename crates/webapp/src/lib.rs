@@ -35,7 +35,7 @@ impl WhoisResolver for Whois {
         } else { return Err(Box::new(errors::WhoisError::GeneralErr { ctx: "could not find whois server to lookup" }));};
 
         let port: &str = self.target.whois_server.split_once(":").ok_or_else(|| {
-            Box::new(errors::WhoisError::GeneralErr{ ctx: "whois server parameter should be a host:port" })
+            Box::new(errors::WhoisError::GeneralErr{ ctx: "whois server should be in host:port format" })
         })?.1;
         Ok(<Whois as WhoisResolver>::lookup(&format!("{main_server}:{port}"), self.target.domain2lookup).await?)
     }

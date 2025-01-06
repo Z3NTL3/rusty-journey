@@ -23,16 +23,7 @@ impl WhoisResolver for Whois {
         conn.write(format!("{domain2_lookup}\r\n").as_bytes()).await?;
         
         let mut data: Vec<u8> = vec![];
-        loop {
-            let mut buff: Vec<u8> = vec![0; 1024];
-            let n = conn.read_buf(&mut buff).await?;
-
-            if n == 0 {
-                break;
-            }
-
-            data.append(&mut buff);
-        }
+        conn.read_to_end(&mut data).await?;
         
         if data.len() == 0 {
             return Err(Box::new(errors::WhoisError::WhoisServerIO { ctx: "Wrote to WHOIS server, but got no response" }));

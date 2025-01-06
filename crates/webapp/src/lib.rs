@@ -31,7 +31,7 @@ impl WhoisResolver for Whois {
         let q1 = self.lookup(self.target.whois_server, self.target.domain2lookup).await?;
         let main_server = 
         if let Some((_, b)) = q1.split_once("whois:") {
-            b.trim().split_once("\n").unwrap().0
+            b.trim().split_once("\n").ok_or_else(|| errors::WhoisError::MissingNewline)?.0
         } else { return Err(Box::new(errors::WhoisError::GeneralErr { ctx: "could not find whois server to lookup" }));};
 
         let port: &str = self.target.whois_server.split_once(":").ok_or_else(|| {
@@ -64,6 +64,9 @@ pub mod errors {
         
         #[error("error: {ctx}")]
         GeneralErr{ctx: &'static str},
+
+        #[error("couldn't find newline seperator")]
+        MissingNewline
     }
 }
 

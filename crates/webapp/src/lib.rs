@@ -2,6 +2,8 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use std::future::Future;
 
+pub mod parser;
+
 #[derive(Clone)]
 // Configuration for your WHOIS instance
 pub struct WhoisOpt {
@@ -14,6 +16,7 @@ pub struct WhoisOpt {
 pub struct Whois{
     target: WhoisOpt
 }
+
 pub trait WhoisResolver: Sized {
     type Error;
 

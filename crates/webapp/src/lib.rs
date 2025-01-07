@@ -2,23 +2,28 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use std::future::Future;
 
-type WhoisICANN = String;
-
 #[derive(Clone)]
+// Configuration for your WHOIS instance
 pub struct WhoisOpt {
     whois_server: &'static str,
     domain2lookup: &'static str
 }
 
 #[derive(Clone)]
+// Whois instance
 pub struct Whois{
     target: WhoisOpt
 }
 pub trait WhoisResolver: Sized {
     type Error;
+
+    // creates a new whois instance and configures the target
     fn new(opt: WhoisOpt) -> Whois;
-    fn query(&self) -> impl Future<Output = Result<WhoisICANN, Self::Error>>;
-    fn lookup(whois_server: &str, domain2_lookup: &str) -> impl Future<Output = Result<String, Self::Error>>;
+    // Queries the WHOIS server and retrieves domain information.
+    // Returns WHOIS information as a string.
+    //
+    // So that you can use any arbitrary parser.
+    fn query(&self) -> impl Future<Output = Result<String, Self::Error>>;
 }
 
 impl WhoisResolver for Whois {
@@ -27,8 +32,8 @@ impl WhoisResolver for Whois {
         Whois{target: opt}
     }
     
-    async fn query(&self) -> Result<WhoisICANN, Self::Error> {
-        let q1 = <Whois as WhoisResolver>::lookup(self.target.whois_server, self.target.domain2lookup).await?;
+    async fn query(&self) -> Result<String, Self::Error> {
+        let q1 = Whois::lookup(self.target.whois_server, self.target.domain2lookup).await?;
         let main_server = 
         if let Some((_, b)) = q1.split_once("whois:") {
             b.trim().split_once("\n").ok_or_else(|| errors::WhoisError::MissingNewline)?.0
@@ -37,13 +42,16 @@ impl WhoisResolver for Whois {
         let port: &str = self.target.whois_server.split_once(":").ok_or_else(|| {
             Box::new(errors::WhoisError::GeneralErr{ ctx: "whois server should be in host:port format" })
         })?.1;
-        Ok(<Whois as WhoisResolver>::lookup(&format!("{main_server}:{port}"), self.target.domain2lookup).await?)
+        Ok(Whois::lookup(&format!("{main_server}:{port}"), self.target.domain2lookup).await?)
     }
+}
 
-    async fn lookup(whois_server: &str, domain2_lookup: &str) -> Result<String, Self::Error> {
+impl Whois {
+    // Sends a query request to the WHOIS server and returns a String that holds WHOIS information
+    async fn lookup(whois_server: &str, domain2_lookup: &str) -> Result<String, Box<dyn std::error::Error>> {
         let mut conn = TcpStream::connect(whois_server).await?;
         conn.write(format!("{domain2_lookup}\r\n").as_bytes()).await?;
-        
+    
         let mut data: Vec<u8> = vec![];
         conn.read_to_end(&mut data).await?;
         

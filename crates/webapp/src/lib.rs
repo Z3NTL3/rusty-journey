@@ -50,6 +50,7 @@ impl WhoisResolver for Whois {
 }
 
 impl Whois {
+    // private
     // Sends a query request to the WHOIS server and returns a String that holds WHOIS information
     async fn lookup(whois_server: &str, domain2_lookup: &str) -> Result<String, Box<dyn std::error::Error>> {
         let mut conn = TcpStream::connect(whois_server).await?;
@@ -88,5 +89,8 @@ async fn test_client() {
         domain2lookup: "simpaix.net"
     });
     let res = client.query().await.unwrap();
-    println!("icann info: {}", res);
+
+    let parser = self::parser::Parser::new();
+    let info = parser.parse(res).unwrap();
+    println!("{:?}", info); // info.registry_domain_id , etc etc
 }

@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 axum = "0.7.9"
-hickory-client = "0.24.2"
+chrono = {version = "0.4.39", features = ["alloc"]}
 minijinja = { version = "2.5.0", features = ["loader"]}
 serde = { version = "1.0.216", features = ["derive"] }
 thiserror = "2.0.9"
@@ -13,4 +13,4 @@ tokio.workspace = true
 tokio-util = { version = "0.7.13", features = ["io"]}
 tower = "0.5.2"
 tower-http = {version="0.6.2", features = ["fs"]}
-whoisthere = "0.1.3"
+

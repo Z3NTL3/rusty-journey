@@ -1,3 +1,4 @@
+//! Parser for WHOIS data
 use std::{fmt::Debug, str::FromStr};
 pub use chrono::{DateTime, Utc};
 
@@ -31,7 +32,7 @@ impl Parser {
     pub fn parse(&self, content: String) -> Result<WhoisInformation, Box<dyn std::error::Error>> {
         let lines = content.split("\n").flat_map(|line| line.split_once(":"));
         let mut whois_information = WhoisInformation::default();
-
+        
         for (key, value) in lines {
             let key = key.trim();
             let value = value.trim();
@@ -42,7 +43,6 @@ impl Parser {
                 "registrar whois server" => whois_information.registrar_whois_server = Some(value.to_owned()),
                 "registrar url" => whois_information.registrar_url = Some(value.to_owned()),
                 "updated date" => whois_information.updated_date = Some(DateTime::<Utc>::from_str(value)?),
-            
                 "creation date" => whois_information.creation_date = Some(DateTime::<Utc>::from_str(value)?),
                 "registry expiry date" => whois_information.registry_expirity_date = Some(DateTime::<Utc>::from_str(value)?),
                 "registrar" => whois_information.registrar = Some(value.to_owned()),

@@ -1,7 +1,10 @@
+#![crate_type = "lib"]
+
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use std::future::Future;
 
+#[cfg(feature = "parser")]
 pub mod parser;
 
 #[derive(Clone)]
@@ -12,7 +15,25 @@ pub struct WhoisOpt {
 }
 
 #[derive(Clone)]
-// Whois instance
+// Whois instance, used for querying a domain to a specific WHOIS server for WHOIS data.
+//
+// # Examples
+// ```
+//
+// #[tokio::test]
+// async fn test_client() {
+//     let client = Whois::new(WhoisOpt{
+//         whois_server: "whois.iana.org:43", 
+//         domain2lookup: "simpaix.net"
+//     });
+//     let res = client.query().await.unwrap();
+//     let parser = parser::Parser::new();
+//     let info = parser.parse(res).unwrap();
+//
+//     println!("{:?}", info); // info.registry_domain_id , etc etc
+// 
+// }
+// ```
 pub struct Whois{
     target: WhoisOpt
 }
@@ -31,6 +52,7 @@ pub trait WhoisResolver: Sized {
 
 impl WhoisResolver for Whois {
     type Error = Box<dyn std::error::Error>;
+    //cool
     fn new(opt: WhoisOpt) -> Whois {
         Whois{target: opt}
     }
@@ -66,6 +88,7 @@ impl Whois {
     }
 }
 
+// Errors that may occur for parent module
 pub mod errors {
     use thiserror::Error;
 
@@ -80,17 +103,4 @@ pub mod errors {
         #[error("couldn't find newline seperator")]
         MissingNewline
     }
-}
-
-#[tokio::test]
-async fn test_client() {
-    let client = Whois::new(WhoisOpt{
-        whois_server: "whois.iana.org:43", 
-        domain2lookup: "simpaix.net"
-    });
-    let res = client.query().await.unwrap();
-
-    let parser = self::parser::Parser::new();
-    let info = parser.parse(res).unwrap();
-    println!("{:?}", info); // info.registry_domain_id , etc etc
 }

@@ -1,7 +1,5 @@
 use std::{fmt::Debug, str::FromStr};
-
 pub use chrono::{DateTime, Utc};
-
 
 #[derive(Debug, Default)]
 pub struct WhoisInformation {
@@ -41,9 +39,7 @@ impl Parser {
             match key.to_lowercase().as_str() {
                 "domain name" => whois_information.domain_name = Some(value.to_owned()),
                 "registry domain id" => whois_information.registry_domain_id = Some(value.to_owned()),
-                "registrar whois server" => {
-                    whois_information.registrar_whois_server = Some(value.to_owned())
-                }
+                "registrar whois server" => whois_information.registrar_whois_server = Some(value.to_owned()),
                 "registrar url" => whois_information.registrar_url = Some(value.to_owned()),
                 "updated date" => whois_information.updated_date = Some(DateTime::<Utc>::from_str(value)?),
             

@@ -1,5 +1,8 @@
 #![crate_type = "lib"]
-
+//! Whois information parsing and querying crate. Provides a high level API.
+//!
+//! Enable the 'parser' flag if you want to use the parser.
+//! Everything related to the parser can be found at [parser]
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use std::future::Future;
@@ -8,32 +11,24 @@ use std::future::Future;
 pub mod parser;
 
 #[derive(Clone)]
-// Configuration for your WHOIS instance
+/// Configuration for your WHOIS instance
 pub struct WhoisOpt {
     whois_server: &'static str,
     domain2lookup: &'static str
 }
 
 #[derive(Clone)]
-// Whois instance, used for querying a domain to a specific WHOIS server for WHOIS data.
-//
-// # Examples
-// ```
-//
-// #[tokio::test]
-// async fn test_client() {
-//     let client = Whois::new(WhoisOpt{
-//         whois_server: "whois.iana.org:43", 
-//         domain2lookup: "simpaix.net"
-//     });
-//     let res = client.query().await.unwrap();
-//     let parser = parser::Parser::new();
-//     let info = parser.parse(res).unwrap();
-//
-//     println!("{:?}", info); // info.registry_domain_id , etc etc
-// 
-// }
-// ```
+/// Whois instance, used for querying a domain to a specific WHOIS server for WHOIS data.
+///
+/// ### Example
+/// ```rust
+/// use crate::{Whois, WhoisOpt, WhoisResolver};
+/// let client = Whois::new(WhoisOpt{
+/// whois_server: "whois.iana.org:43", 
+/// domain2lookup: "simpaix.net"
+/// });
+/// let res = client.query().await.expect("expected a response");
+/// ```
 pub struct Whois{
     target: WhoisOpt
 }
@@ -41,18 +36,45 @@ pub struct Whois{
 pub trait WhoisResolver: Sized {
     type Error;
 
-    // creates a new whois instance and configures the target
+    /// Creates a new whois instance and configures the target
+    /// 
+    /// ### Example
+    /// ```
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let client = Whois::new(WhoisOpt{
+    ///         whois_server: "whois.iana.org:43", 
+    ///         domain2lookup: "simpaix.net"
+    ///     });
+    /// }```
+    /// 
     fn new(opt: WhoisOpt) -> Whois;
-    // Queries the WHOIS server and retrieves domain information.
-    // Returns WHOIS information as a string.
-    //
-    // So that you can use any arbitrary parser.
+    
+    /// Queries the WHOIS server and retrieves domain information.
+    /// Returns WHOIS information as a string.
+    ///
+    /// So that you can use any arbitrary parser.
+    /// 
+    /// ### Example
+    /// ```
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let client = Whois::new(WhoisOpt{
+    ///         whois_server: "whois.iana.org:43", 
+    ///         domain2lookup: "simpaix.net"
+    ///     });
+    ///     let res = client.query().await.expect("expected a response");
+    ///
+    ///     let parser = parser::Parser::new();
+    ///     let info = parser.parse(res).unwrap();
+    ///     println!("{}{}", info.creation_date.unwrap().format("%d/%m/%Y %H:%M") ,info.domain_status.unwrap()); // info.registry_domain_id , etc etc
+    /// }```
     fn query(&self) -> impl Future<Output = Result<String, Self::Error>>;
 }
 
 impl WhoisResolver for Whois {
     type Error = Box<dyn std::error::Error>;
-    //cool
+
     fn new(opt: WhoisOpt) -> Whois {
         Whois{target: opt}
     }
@@ -72,8 +94,8 @@ impl WhoisResolver for Whois {
 }
 
 impl Whois {
-    // private
-    // Sends a query request to the WHOIS server and returns a String that holds WHOIS information
+    /// private!
+    /// Sends a query request to the WHOIS server and returns a String that holds WHOIS information
     async fn lookup(whois_server: &str, domain2_lookup: &str) -> Result<String, Box<dyn std::error::Error>> {
         let mut conn = TcpStream::connect(whois_server).await?;
         conn.write(format!("{domain2_lookup}\r\n").as_bytes()).await?;
@@ -103,4 +125,17 @@ pub mod errors {
         #[error("couldn't find newline seperator")]
         MissingNewline
     }
+}
+
+#[tokio::test]
+async fn test_client() {
+    let client = Whois::new(WhoisOpt{
+        whois_server: "whois.iana.org:43", 
+        domain2lookup: "simpaix.net"
+    });
+    let res = client.query().await.expect("expected a response");
+
+    let parser = parser::Parser::new();
+    let info = parser.parse(res).unwrap();
+    println!("creation date:{}\nexpire:{}", info.creation_date.unwrap().format("%d/%m/%Y %H:%M") ,info.domain_status.unwrap()); // info.registry_domain_id , etc etc
 }

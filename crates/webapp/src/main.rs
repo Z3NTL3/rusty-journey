@@ -6,6 +6,7 @@ use thiserror::Error;
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
 use tower_http::services::ServeDir;
+use webapp::template;
 
 #[derive(Serialize)]
 struct GlobalErrResponse {
@@ -91,21 +92,10 @@ async fn handler(data: Extension<String>) -> axum::response::Result<Response> {
 }
 
 async fn handler_404(template: State<Arc<Environment<'static>>>) -> axum::response::Result<Response> {
-    let template = template.get_template("error.html").map_err(|e|{
-        println!("{e}");
-        AppError::OopsWithDetails { 
-            code: StatusCode::INTERNAL_SERVER_ERROR, 
-            detail: "Failed to get error.html template".into() 
-        }
+    let res = template!(template, "error.html", {
+        text => "hello world"
     })?;
-
-    let res = template.render(context! {text => "hello world"}).map_err(|e|{
-        println!("{e}");
-        AppError::OopsWithDetails { 
-            code: StatusCode::INTERNAL_SERVER_ERROR, 
-            detail: "Failed to render error.html template".into() 
-        }
-    })?;
+    
     Ok(Html(res).into_response())
 }
 struct ExtractXData(String);
@@ -127,25 +117,6 @@ where
 
         Ok(ExtractXData(extracted_part.into()))
     }
-}
-
-macro_rules! template {
-    ($tmpl:expr, $name:expr, { $($key:ident => $value:expr),+ }) => {
-        {
-            let data = context! { 
-                $( $key => $value,)+
-            };
-            
-            Result::<String, AppError>::Ok($tmpl.get_template($name)
-                .map_err(|e| {
-                    AppError::OopsError{err: format!("{e}")}
-                })?
-                .render(data)
-                .map_err(|e| {
-                    AppError::OopsError{err: format!("{e}")}
-                })?)
-        }
-    };
 }
 
 async fn some_handler(template: State<Arc<Environment<'static>>>) -> axum::response::Result<Response> {

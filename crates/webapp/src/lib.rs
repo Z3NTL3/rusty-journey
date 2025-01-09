@@ -9,6 +9,7 @@ use std::future::Future;
 
 #[cfg(feature = "parser")]
 pub mod parser;
+pub mod macros;
 
 #[derive(Clone)]
 /// Configuration for your WHOIS instance

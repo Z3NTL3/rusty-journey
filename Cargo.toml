@@ -3,7 +3,7 @@ resolver = "1"
 
 members = [ 
     "crates/multithreaded-async"
-, "crates/webapp"]
+, "crates/webapp", "crates/sfmacro"]
 
 
 [workspace.dependencies]

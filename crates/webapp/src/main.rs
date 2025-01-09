@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use axum::{async_trait, body::Body, extract::{FromRequestParts, Request, State}, handler::Handler, http::{request::Parts, HeaderValue, StatusCode}, middleware::{self, Next}, response::{Html, IntoResponse, Response}, routing::get, Extension, Router};
+use axum::{async_trait, body::Body, extract::{FromRequestParts, Request, State}, handler::Handler, http::{request::Parts, HeaderValue, StatusCode}, middleware::{self, Next}, response::{AppendHeaders, Html, IntoResponse, Response}, routing::get, Extension, Router};
 use minijinja::{context, Environment};
 use serde::{self, Serialize};
 use thiserror::Error;
@@ -20,6 +20,8 @@ pub enum AppError {
     RequestPayload,
     #[error("Oops something went wrong: {detail}")]
     OopsWithDetails{code: StatusCode, detail: String},
+    #[error("Oops something went wrong: {err}")]
+    OopsError{err: String},
 }
 
 impl IntoResponse for AppError {
@@ -43,6 +45,12 @@ impl IntoResponse for AppError {
                 (
                     code, 
                     res
+                ).into_response()
+            },
+            AppError::OopsError{err} => {
+                (
+                    StatusCode::BAD_REQUEST, 
+                    err
                 ).into_response()
             },
         }
@@ -121,17 +129,32 @@ where
     }
 }
 
-async fn some_handler(ExtractXData(x_data): ExtractXData, template: State<Arc<Environment<'static>>>) -> axum::response::Result<Response> {
-    let template = template.get_template("error.html").map_err(|e|{
-        println!("{e}");
-        AppError::Oops
+macro_rules! template {
+    ($tmpl:expr, $name:expr, { $($key:ident => $value:expr),+ }) => {
+        {
+            let data = context! { 
+                $( $key => $value,)+
+            };
+            
+            Result::<String, AppError>::Ok($tmpl.get_template($name)
+                .map_err(|e| {
+                    AppError::OopsError{err: format!("{e}")}
+                })?
+                .render(data)
+                .map_err(|e| {
+                    AppError::OopsError{err: format!("{e}")}
+                })?)
+        }
+    };
+}
+
+async fn some_handler(template: State<Arc<Environment<'static>>>) -> axum::response::Result<Response> {
+    let tmpl = template!(template, "error.html", { 
+        text => "yolo",
+        yo => ""
     })?;
 
-    let res = template.render(context! {text => format!("hello, got X-Data: {}", x_data)}).map_err(|e|{
-        println!("{e}");
-        AppError::Oops
-    })?;
-    Ok(Html(res).into_response())
+    Ok(Html(tmpl).into_response())
 }
 
 

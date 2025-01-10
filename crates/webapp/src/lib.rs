@@ -3,6 +3,7 @@
 //!
 //! Enable the 'parser' flag if you want to use the parser.
 //! Everything related to the parser can be found at [parser]
+// use proc_macro::TokenStream;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use std::future::Future;
@@ -10,6 +11,7 @@ use std::future::Future;
 #[cfg(feature = "parser")]
 pub mod parser;
 pub mod macros;
+
 
 #[derive(Clone)]
 /// Configuration for your WHOIS instance

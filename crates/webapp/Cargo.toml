@@ -18,4 +18,4 @@ tokio.workspace = true
 tokio-util = { version = "0.7.13", features = ["io"]}
 tower = "0.5.2"
 tower-http = {version="0.6.2", features = ["fs"]}
-
+sfmacro = {path = "../sfmacro"}

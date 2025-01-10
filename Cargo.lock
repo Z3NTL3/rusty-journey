@@ -2128,6 +2128,7 @@ dependencies = [
  "chrono",
  "minijinja",
  "serde",
+ "sfmacro",
  "thiserror 2.0.9",
  "tokio",
  "tokio-util",

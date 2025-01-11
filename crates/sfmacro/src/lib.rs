@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
-use syn::{parse::{Parse, ParseStream}, ItemStruct, MetaNameValue, Token};
+use syn::{parse::ParseStream, ItemStruct, MetaNameValue, Token};
 
 struct Attrs {
     args: syn::punctuated::Punctuated<syn::MetaNameValue, syn::Token![,]>,

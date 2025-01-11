@@ -8,6 +8,6 @@ struct Page {
 
 #[tokio::main]
 async fn main() {
-    let mut page = Page::default();
+    let page = Page::default();
     println!("{:?}", page.scrape().await.unwrap());
 }

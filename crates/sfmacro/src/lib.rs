@@ -1,29 +1,6 @@
 use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
-use syn::{parse::ParseStream, Attribute, ItemStruct, Meta, MetaNameValue, Token};
-
-#[cfg(test)]
-mod test {
-    use quote::quote;
-
-    #[test]
-    fn test_macro(){
-        use super::scrape_website_page_impl;
-
-        scrape_website_page_impl(
-        quote! {
-               url="test",
-               baby="doei"
-            }, 
-        quote! {
-                #[scrape_website_page(url="test")]
-                struct Page {
-                    title: String
-                }
-            }
-        );
-    }
-}
+use syn::{parse::ParseStream, ItemStruct, MetaNameValue, Token};
 
 struct Attrs {
     args: syn::punctuated::Punctuated<syn::MetaNameValue, syn::Token![,]>,
@@ -38,12 +15,8 @@ impl syn::parse::Parse for Attrs {
 }
 
 #[proc_macro_attribute]
-pub fn scrape_website_page(args: TokenStream, item: TokenStream) -> TokenStream {
-    scrape_website_page_impl(args.into(), item.into()).into()
-}
-
-fn scrape_website_page_impl(args: proc_macro2::TokenStream, item: proc_macro2::TokenStream) -> proc_macro2::TokenStream {
-    let attr = syn::parse2::<Attrs>(args).unwrap();
+pub fn scrape_website(args: TokenStream, item: TokenStream) -> TokenStream {
+    let attr = syn::parse::<Attrs>(args).unwrap();
 
     let mut url = String::default();
     for arg in attr.args {
@@ -53,33 +26,43 @@ fn scrape_website_page_impl(args: proc_macro2::TokenStream, item: proc_macro2::T
     }
 
     url = url.replace("\"", "");
-    
     let ItemStruct{
         ident,
         generics,
         fields,
         ..
-    } = syn::parse2::<ItemStruct>(item).unwrap();
+    } = syn::parse::<ItemStruct>(item).unwrap();
 
  
-    let mut clean_fields = Vec::<syn::Field>::default();
+    let mut fields_iter = Vec::<syn::Field>::default();
     for field in fields {
-        clean_fields.push(field);
+        fields_iter.push(field);
     }
     quote! {
         struct #ident #generics {
             page_content: String,
-            url: String,
-            #(#clean_fields),*
+            #(#fields_iter),*
         }
 
         impl #ident #generics {
-            // just as demonstration
-            pub fn scrape(&mut self) -> String {
-                self.url = #url.to_string();
-                String::from(#url)
+            pub async fn scrape(&mut self) -> Result<(), reqwest::Error> {
+                let body = reqwest::get(#url)
+                    .await?
+                    .text()
+                    .await?;
+                self.page_content = body.into();
+                Ok(())
             }
         }
-    }
 
+        impl std::default::Default for #ident #generics {
+            fn default() -> Self {
+                Self { page_content: Default::default(), title: Default::default() }
+            }
+        }
+        
+    }.into()
 }
+
+
+

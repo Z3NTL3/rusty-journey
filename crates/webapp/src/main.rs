@@ -128,13 +128,6 @@ async fn some_handler(template: State<Arc<Environment<'static>>>) -> axum::respo
     Ok(Html(tmpl).into_response())
 }
 
-use sfmacro::scrape_website_page;
-
-#[scrape_website_page(url="https://google.com")]
-struct Page {
-    title: String
-}
-
 #[tokio::main]
 async fn main() {
     let mut templates = Environment::new();

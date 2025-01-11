@@ -1,0 +1,9 @@
+[package]
+name = "test-macro"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sfmacro = {path = "../sfmacro"}
+reqwest.workspace = true
+tokio.workspace = true

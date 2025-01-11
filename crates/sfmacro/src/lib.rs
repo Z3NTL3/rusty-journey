@@ -12,7 +12,8 @@ mod test {
 
         scrape_website_page_impl(
         quote! {
-                scrape_website_page(url="test")
+               url="test",
+               baby="doei"
             }, 
         quote! {
                 #[scrape_website_page(url="test")]
@@ -25,18 +26,13 @@ mod test {
 }
 
 struct Attrs {
-    ident: syn::Ident,
     args: syn::punctuated::Punctuated<syn::MetaNameValue, syn::Token![,]>,
-    parentheses: syn::token::Paren
 }
 
 impl syn::parse::Parse for Attrs {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        let content;
         Ok(Attrs{
-            ident: input.parse()?,
-            parentheses: syn::parenthesized!(content in input),
-            args: content.parse_terminated(MetaNameValue::parse, Token![,])?
+            args: input.parse_terminated(MetaNameValue::parse, Token![,])?
         })
     }
 }
@@ -65,17 +61,24 @@ fn scrape_website_page_impl(args: proc_macro2::TokenStream, item: proc_macro2::T
         ..
     } = syn::parse2::<ItemStruct>(item).unwrap();
 
+ 
+    let mut clean_fields = Vec::<syn::Field>::default();
+    for field in fields {
+        clean_fields.push(field);
+    }
     quote! {
+        
         struct #ident #generics {
             page_content: String,
             url: String,
-            #fields
+            #(#clean_fields.attrs)*
+            #(#clean_fields.vis)* #(#clean_fields.ident)*: #(#clean_fields.ty)*
         }
 
         impl #ident #generics {
             // just as demonstration
             pub fn scrape(&mut self) -> String {
-                self.url = #url;
+                self.url = #url.to_string();
                 String::from(#url)
             }
         }

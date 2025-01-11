@@ -1,6 +1,6 @@
 use sfmacro::scrape_website;
 
-#[scrape_website(url="https://httpbin.org/anything")]
+#[scrape_website(url="https://httpbin.org/uuid")]
 struct Page {
     #[allow(unused)]
     title: String

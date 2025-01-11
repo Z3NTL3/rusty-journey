@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
-use syn::{parse::ParseStream, ItemStruct, MetaNameValue, Token};
+use syn::{parse::{Parse, ParseStream}, ItemStruct, MetaNameValue, Token};
 
 struct Attrs {
     args: syn::punctuated::Punctuated<syn::MetaNameValue, syn::Token![,]>,
@@ -17,8 +17,8 @@ impl syn::parse::Parse for Attrs {
 #[proc_macro_attribute]
 pub fn scrape_website(args: TokenStream, item: TokenStream) -> TokenStream {
     let attr = syn::parse::<Attrs>(args).unwrap();
-
     let mut url = String::default();
+
     for arg in attr.args {
         if arg.path.is_ident("url") {
             url = arg.value.to_token_stream().to_string();
@@ -33,11 +33,7 @@ pub fn scrape_website(args: TokenStream, item: TokenStream) -> TokenStream {
         ..
     } = syn::parse::<ItemStruct>(item).unwrap();
 
- 
-    let mut fields_iter = Vec::<syn::Field>::default();
-    for field in fields {
-        fields_iter.push(field);
-    }
+    let fields_iter = fields.iter().map(|field| field);
     quote! {
         struct #ident #generics {
             page_content: String,
@@ -63,6 +59,3 @@ pub fn scrape_website(args: TokenStream, item: TokenStream) -> TokenStream {
         
     }.into()
 }
-
-
-

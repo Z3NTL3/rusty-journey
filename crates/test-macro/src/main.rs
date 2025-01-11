@@ -9,7 +9,5 @@ struct Page {
 #[tokio::main]
 async fn main() {
     let mut page = Page::default();
-    page.scrape().await.unwrap();
-
-    println!("{:?}", page.page_content);
+    println!("{:?}", page.scrape().await.unwrap());
 }

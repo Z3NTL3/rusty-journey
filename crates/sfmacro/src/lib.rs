@@ -35,25 +35,18 @@ pub fn scrape_website(args: TokenStream, item: TokenStream) -> TokenStream {
 
     let fields_iter = fields.iter().map(|field| field);
     quote! {
+        #[derive(std::default::Default)]
         struct #ident #generics {
-            page_content: String,
             #(#fields_iter),*
         }
 
         impl #ident #generics {
-            pub async fn scrape(&mut self) -> Result<(), reqwest::Error> {
+            pub async fn scrape(&self) -> Result<String, reqwest::Error> {
                 let body = reqwest::get(#url)
                     .await?
                     .text()
                     .await?;
-                self.page_content = body.into();
-                Ok(())
-            }
-        }
-
-        impl std::default::Default for #ident #generics {
-            fn default() -> Self {
-                Self { page_content: Default::default(), title: Default::default() }
+                Ok(body.into())
             }
         }
         

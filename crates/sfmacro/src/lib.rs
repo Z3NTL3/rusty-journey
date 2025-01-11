@@ -67,12 +67,10 @@ fn scrape_website_page_impl(args: proc_macro2::TokenStream, item: proc_macro2::T
         clean_fields.push(field);
     }
     quote! {
-        
         struct #ident #generics {
             page_content: String,
             url: String,
-            #(#clean_fields.attrs)*
-            #(#clean_fields.vis)* #(#clean_fields.ident)*: #(#clean_fields.ty)*
+            #(#clean_fields),*
         }
 
         impl #ident #generics {

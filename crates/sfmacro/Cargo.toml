@@ -8,4 +8,5 @@ proc-macro = true
 
 [dependencies]
 quote = "1.0.38"
+reqwest.workspace = true
 syn = {version = "2.0.95", features = ["full"]}

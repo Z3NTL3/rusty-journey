@@ -44,7 +44,7 @@ pub fn scrape_website(args: TokenStream, item: TokenStream) -> TokenStream {
             #(#fields_iter),*
         }
 
-        impl #ident #generics {
+        impl #generics #ident #generics {
             pub async fn scrape(&self) -> Result<String, reqwest::Error> {
                 let body = reqwest::get(#url)
                     .await?

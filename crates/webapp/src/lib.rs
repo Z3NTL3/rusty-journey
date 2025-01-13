@@ -3,6 +3,7 @@
 //!
 //! Enable the 'parser' flag if you want to use the parser.
 //! Everything related to the parser can be found at [parser]
+use axum::async_trait;
 // use proc_macro::TokenStream;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
@@ -36,6 +37,7 @@ pub struct Whois{
     target: WhoisOpt
 }
 
+#[async_trait]
 pub trait WhoisResolver: Sized {
     type Error;
 
@@ -72,9 +74,10 @@ pub trait WhoisResolver: Sized {
     ///     let info = parser.parse(res).unwrap();
     ///     println!("{}{}", info.creation_date.unwrap().format("%d/%m/%Y %H:%M") ,info.domain_status.unwrap()); // info.registry_domain_id , etc etc
     /// }```
-    fn query(&self) -> impl Future<Output = Result<String, Self::Error>>;
+    async fn query(&self) -> Result<String, Self::Error>;
 }
 
+#[async_trait]
 impl WhoisResolver for Whois {
     type Error = Box<dyn std::error::Error>;
 

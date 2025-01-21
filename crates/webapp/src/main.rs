@@ -130,6 +130,7 @@ async fn some_handler(template: State<Arc<Environment<'static>>>) -> axum::respo
 
 #[tokio::main]
 async fn main() {
+    
     let mut templates = Environment::new();
     templates.set_loader(minijinja::path_loader("crates/webapp/views"));
     templates.add_filter("test", |a: u8| {

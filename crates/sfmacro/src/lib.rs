@@ -29,9 +29,9 @@ pub fn scrape_website(args: TokenStream, item: TokenStream) -> TokenStream {
     url = url.replace("\"", "");
     let ItemStruct{
         ident,
-        generics,
         fields,
         attrs,
+        generics,
         ..
     } = syn::parse::<ItemStruct>(item).unwrap();
 

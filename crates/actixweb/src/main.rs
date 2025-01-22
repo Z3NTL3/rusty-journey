@@ -26,7 +26,7 @@ impl actix_web::error::ResponseError for AppError {
     name = "app::get", 
     level = Level::DEBUG, 
     skip(req)
-    fields(path = req.uri().path().to_string())
+    fields(path = req.uri().path())
 )]
 #[get("/")]
 

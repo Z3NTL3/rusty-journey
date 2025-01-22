@@ -1,10 +1,7 @@
-use actix_web::dev::ResourcePath;
-use serde::{Deserialize, Serialize};
-use actix_web::{get, web, App, HttpRequest, HttpServer};
+use actix_web::{get, App, HttpRequest, HttpServer};
 use thiserror::Error;
-use tracing::level_filters::LevelFilter;
 use tracing::{instrument, Level};
-use tracing_subscriber::fmt::format::FmtSpan;
+use tracing_subscriber::fmt::{format::FmtSpan, time::ChronoLocal};
 
 #[derive(Error, Debug)]
 pub enum AppError {
@@ -43,6 +40,7 @@ async fn main() {
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
         .with_max_level(Level::DEBUG)
         .with_span_events(FmtSpan::NEW)
+        .with_timer(ChronoLocal::new("%Y-%m-%d %H:%M:%S".into()))
         .finish();
 
     tracing::subscriber::set_global_default(subscriber).unwrap();

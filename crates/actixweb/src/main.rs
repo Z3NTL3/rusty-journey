@@ -1,6 +1,10 @@
+use actix_web::dev::ResourcePath;
 use serde::{Deserialize, Serialize};
-use actix_web::{get, web, App, HttpServer};
+use actix_web::{get, web, App, HttpRequest, HttpServer};
 use thiserror::Error;
+use tracing::level_filters::LevelFilter;
+use tracing::{instrument, Level};
+use tracing_subscriber::fmt::format::FmtSpan;
 
 #[derive(Error, Debug)]
 pub enum AppError {
@@ -21,34 +25,30 @@ impl actix_web::error::ResponseError for AppError {
     }
 } 
 
+#[instrument(
+    name = "app::get", 
+    level = Level::DEBUG, 
+    skip(req)
+    fields(path = req.uri().path().to_string())
+)]
 #[get("/")]
-async fn index() -> Result<String, AppError> {
-    Err(AppError::Unknown { something: "oops br" })
-}
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(tag = "Platform", rename_all = "SCREAMING-KEBAB-CASE")]
-enum User {
-    #[serde(rename_all = "PascalCase")]
-    Discord{email: String},
-    #[serde(other)]
-    Unknown
+async fn index(req: HttpRequest) -> Result<String, AppError> {
+    tracing::info!("serving req");
+    Err(AppError::Unknown { something: "oops br" })
 }
 
 #[tokio::main]
 async fn main() {
-    let discord_user = User::Discord { email: "yolo@gmail.com".into() };
-    let serialized = serde_json::to_string(&discord_user).unwrap();
+    let subscriber = tracing_subscriber::FmtSubscriber::builder()
+        .with_max_level(Level::DEBUG)
+        .with_span_events(FmtSpan::NEW)
+        .finish();
 
-    println!("serialized: {serialized}");
-    // serialized: {"Platform":"DISCORD","Email":"yolo@gmail.com"}
-
+    tracing::subscriber::set_global_default(subscriber).unwrap();
     HttpServer::new(|| {
         App::new()
-            .service(
-                web::scope("/")
-                .service(index)
-        )
+            .service(index)
     })
     .bind(("127.0.0.1", 2000)).expect("failed starting server")
     .run()

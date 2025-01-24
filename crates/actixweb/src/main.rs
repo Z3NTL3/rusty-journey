@@ -37,13 +37,12 @@ async fn index(req: HttpRequest) -> Result<String, AppError> {
 
 #[tokio::main]
 async fn main() {
-    let subscriber = tracing_subscriber::FmtSubscriber::builder()
+    tracing_subscriber::fmt()
         .with_max_level(Level::DEBUG)
         .with_span_events(FmtSpan::NEW)
         .with_timer(ChronoLocal::new("%Y-%m-%d %H:%M:%S".into()))
-        .finish();
+        .init();
 
-    tracing::subscriber::set_global_default(subscriber).unwrap();
     HttpServer::new(|| {
         App::new()
             .service(index)

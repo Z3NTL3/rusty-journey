@@ -29,7 +29,6 @@ impl actix_web::error::ResponseError for AppError {
     fields(path = req.uri().path())
 )]
 #[get("/")]
-
 async fn index(req: HttpRequest) -> Result<String, AppError> {
     tracing::info!("serving req");
     Err(AppError::Unknown { something: "oops br" })
@@ -47,7 +46,7 @@ async fn main() {
         App::new()
             .service(index)
     })
-    .bind(("127.0.0.1", 2000)).expect("failed starting server")
-    .run()
-    .await.unwrap();
+        .bind(("127.0.0.1", 2000)).expect("failed starting server")
+        .run()
+        .await.unwrap();
 }

@@ -1,11 +1,12 @@
-use std::sync::Arc;
-use axum::{async_trait, body::Body, extract::{FromRequestParts, Request, State}, handler::Handler, http::{request::Parts, HeaderValue, StatusCode}, middleware::{self, Next}, response::{AppendHeaders, Html, IntoResponse, Response}, routing::get, Extension, Router};
+use std::{fmt::Display, future::Future, pin::Pin, sync::{atomic::{AtomicU64, Ordering}, Arc}, task::{Context, Poll}};
+use axum::{async_trait, body::Body, extract::{FromRequestParts, Request, State}, handler::Handler, http::{request::Parts, HeaderValue, StatusCode}, middleware::{self, Next}, response::{AppendHeaders, Html, IntoResponse, Response}, routing::get, Extension, RequestExt, Router};
 use minijinja::{context, Environment};
 use serde::{self, Serialize};
 use thiserror::Error;
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
-use tower_http::services::ServeDir;
+use tower::{Layer, Service};
+use tower_http::{classify, services::ServeDir};
 use webapp::template;
 
 #[derive(Serialize)]
@@ -119,8 +120,8 @@ where
     }
 }
 
-async fn some_handler(template: State<Arc<Environment<'static>>>) -> axum::response::Result<Response> {
-    let tmpl = template!(template, "error.html", { 
+async fn some_handler(app_state: State<AppState>) -> axum::response::Result<Response> {
+    let tmpl = template!(app_state.views_engine, "error.html", { 
         text => "yolo",
         yo => ""
     })?;
@@ -128,8 +129,83 @@ async fn some_handler(template: State<Arc<Environment<'static>>>) -> axum::respo
     Ok(Html(tmpl).into_response())
 }
 
+#[derive(Clone)]
+struct AppState {
+    global_req_counter: Arc<AtomicU64>,
+    views_engine: Arc<Environment<'static>> 
+}
+
+#[derive(Clone)]
+struct AppLayer{
+    state: AppState,
+}
+
+impl<S> Layer<S> for AppLayer {
+    type Service = AppMiddleware<S>;
+
+    fn layer(&self, service: S) -> Self::Service {
+        AppMiddleware {
+            inner: service,
+            state: self.state.clone()
+        }
+    }
+}
+
+#[derive(Clone)]
+struct AppMiddleware<S> {
+    inner: S,
+    state: AppState,
+}
+
+impl<S> Service<Request> for AppMiddleware<S>
+where
+    for<'a> S: Service<Request, Response = Response> + Send + 'a,
+    for<'a> S::Future: Send + 'a,
+    
+{
+    type Response = S::Response;
+    type Error = S::Error;
+    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send + 'static>>;
+
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.inner.poll_ready(cx)
+    }
+
+    fn call(&mut self, request: Request) -> Self::Future {
+        self.state.global_req_counter.fetch_add(1, Ordering::SeqCst);
+        let total_requests = self.state.global_req_counter.load(Ordering::SeqCst);
+
+        println!("reqs: {total_requests}");
+
+        let future = self.inner.call(request);
+        Box::pin(async move {
+            let response: Response = future.await?;
+            Ok(response)
+        })
+    }
+}
+#[allow(unused)]
+struct Closure<F> {
+    data: (u8, u16),
+    func: F,
+}
+
+#[allow(unused)]
+impl<'a, F> Closure<F>
+    where F: Fn(&'a (u8, u16)) -> &'a u8,
+{
+    fn call(&'a self) -> &'a u8 {
+        (self.func)(&self.data)
+    }
+}
+
+#[allow(unused)]
+fn do_it(data: &(u8, u16)) -> &u8 { &data.0 }
+
 #[tokio::main]
 async fn main() {
+    let clo = Closure { data: (0, 1), func: do_it };
+    println!("{}", clo.call());
     
     let mut templates = Environment::new();
     templates.set_loader(minijinja::path_loader("crates/webapp/views"));
@@ -141,13 +217,19 @@ async fn main() {
     let service_404 = handler_404.with_state(engine.clone());
     let assets = ServeDir::new("crates/webapp/assets").not_found_service(service_404.clone());
 
+    let app_state = AppState{
+        global_req_counter: Arc::new(AtomicU64::new(0)),
+        views_engine: engine
+    };
+
     let layered_handler = handler.layer(middleware::from_fn(pass_some_data));
     let app = Router::new()
         .route("/", get(layered_handler))
         .route("/x-data", get(some_handler))
         .nest_service("/static", assets)
         .fallback_service(service_404)
-        .with_state(engine);
+        .layer(AppLayer{state: app_state.clone()})
+        .with_state(app_state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();

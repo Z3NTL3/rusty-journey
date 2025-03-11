@@ -3,7 +3,7 @@ resolver = "1"
 
 members = [ 
     "crates/multithreaded-async"
-, "crates/webapp", "crates/sfmacro", "crates/test-macro", "crates/actixweb"]
+, "crates/webapp", "crates/sfmacro", "crates/test-macro", "crates/actixweb", "crates/iterator"]
 
 
 [workspace.dependencies]

@@ -13,8 +13,9 @@ struct Users<'a> {
     items: Vec<User<'a>>
 }
 
+type BorrowIter<'a, 'b> = std::slice::Iter<'b, User<'a>>;
 impl<'a,'b> Users<'a> {
-    fn iter(&'b self) -> std::slice::Iter<'b, User<'a>> {
+    fn iter(&'b self) -> BorrowIter<'a, 'b> {
         self.items.iter()
     }
 
@@ -40,7 +41,7 @@ impl<'a, 'b> IntoIterator for &'b mut Users<'a> {
 impl<'a, 'b> IntoIterator for &'b Users<'a> {
     type Item = &'b User<'a>;
 
-    type IntoIter = std::slice::Iter<'b, User<'a>>;
+    type IntoIter = BorrowIter<'a, 'b>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.items.iter()
